@@ -2,7 +2,7 @@
 
 ## Features (work in progess)
 
-- Adding multiple steam accoutns
+- Adding multiple steam accounts
 - Auto login with 2FA
 - Add multiple modules like:
     - enable steam guard
