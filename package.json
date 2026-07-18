@@ -1,24 +1,74 @@
 {
-  "name": "pam",
+  "name": "sah",
   "version": "1.0.0",
-  "description": "Platform account manager",
-  "homepage": "https://github.com/Jusmejtr/PAM#readme",
+  "description": "Steam Account Helper",
+  "homepage": "https://github.com/Jusmejtr/SAH#readme",
   "bugs": {
-    "url": "https://github.com/Jusmejtr/PAM/issues"
+    "url": "https://github.com/Jusmejtr/SAH/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Jusmejtr/PAM.git"
+    "url": "git+https://github.com/Jusmejtr/SAH.git"
   },
   "license": "ISC",
   "author": "Jusmejtr",
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron ."
+    "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "start": "electron .",
+    "build": "vite build",
+    "dist:win": "npm run build && electron-builder --win portable",
+    "dist:win:installer": "npm run build && electron-builder --win nsis",
+    "preview": "vite preview",
+    "vite:dev": "vite --host 127.0.0.1 --port 5173 --strictPort"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.2.0",
+    "preact": "^10.26.9",
+    "react-icons": "^5.7.0"
   },
   "devDependencies": {
-    "electron": "^43.1.0"
+    "@preact/preset-vite": "^2.10.2",
+    "concurrently": "^9.2.1",
+    "electron": "^43.1.0",
+    "electron-builder": "^26.0.12",
+    "typescript": "^7.0.2",
+    "vite": "^7.0.4",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.jusmejtr.sah",
+    "productName": "Steam Account Helper",
+    "icon": "public/app-icon.svg",
+    "files": [
+      "main.js",
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
