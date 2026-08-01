@@ -1,7 +1,9 @@
-import { Button, Checkbox, FormControlLabel, Stack } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, IconButton, Stack } from "@mui/material";
+import { FaCog } from "react-icons/fa";
 import { useState } from "preact/hooks";
 import AddDialog from "./manage-account/AddDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import SettingsDialog from "./SettingsDialog";
 import type { NewAccount } from "../api";
 
 type NavProps = {
@@ -24,6 +26,7 @@ export default function Nav({
   allSelected,
 }: NavProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleDeleteClick = () => {
     if (selectedCount > 0) {
@@ -50,6 +53,9 @@ export default function Nav({
         >
           {manageMode ? "Exit Manage" : "Manage"}
         </Button>
+        <IconButton aria-label="settings" onClick={() => setSettingsOpen(true)}>
+          <FaCog />
+        </IconButton>
       </Stack>
       {manageMode && (
         <Stack
@@ -78,6 +84,7 @@ export default function Nav({
         onClose={() => setConfirmOpen(false)}
         onConfirm={() => void handleConfirmDelete()}
       />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </Stack>
   );
 }

@@ -29,15 +29,6 @@ export function App() {
     setAccounts((prev) => [...prev, created]);
   };
 
-  const handleRemove = async (id: string) => {
-    try {
-      setAccounts(await removeAccount(id));
-      setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id));
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
-
   const handleToggleManage = () => {
     setManageMode((prev) => !prev);
     setSelectedIds([]);
@@ -78,7 +69,8 @@ export function App() {
     }
   };
 
-  const allSelected = accounts.length > 0 && selectedIds.length === accounts.length;
+  const allSelected =
+    accounts.length > 0 && selectedIds.length === accounts.length;
 
   return (
     <Box>

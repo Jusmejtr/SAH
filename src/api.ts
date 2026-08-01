@@ -11,10 +11,18 @@ export type NewAccount = {
   displayName: string;
 };
 
+export type AppSettings = {
+  width: number;
+  height: number;
+  maximize: boolean;
+};
+
 type SahApi = {
   listAccounts: () => Promise<Account[]>;
   addAccount: (account: NewAccount) => Promise<Account>;
   removeAccount: (id: string) => Promise<Account[]>;
+  getSettings: () => Promise<AppSettings>;
+  setSettings: (settings: AppSettings) => Promise<AppSettings>;
 };
 
 declare global {
