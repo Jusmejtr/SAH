@@ -1,6 +1,9 @@
-const path = require("node:path");
-const { app, BrowserWindow, Menu } = require("electron");
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { app, BrowserWindow, Menu, ipcMain } from "electron";
+import { addAccount, listAccounts, removeAccount } from "./store.js";
 
+const dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDevelopment = !app.isPackaged;
 
 const createWindow = async () => {
@@ -10,6 +13,7 @@ const createWindow = async () => {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(dirname, "preload.mjs"),
     },
   });
 
@@ -18,12 +22,16 @@ const createWindow = async () => {
     return;
   }
 
-  await win.loadFile(path.join(__dirname, "dist", "index.html"));
+  await win.loadFile(path.join(dirname, "dist", "index.html"));
 };
 
-Menu.setApplicationMenu(null)
+Menu.setApplicationMenu(null);
 
 app.whenReady().then(() => {
+  ipcMain.handle("accounts:list", () => listAccounts());
+  ipcMain.handle("accounts:add", (_event, account) => addAccount(account));
+  ipcMain.handle("accounts:remove", (_event, id) => removeAccount(id));
+
   createWindow();
 
   app.on("activate", () => {

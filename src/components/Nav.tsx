@@ -1,10 +1,15 @@
 import { Stack } from "@mui/material";
 import AddDialog from "./manage-account/AddDialog";
+import type { NewAccount } from "../api";
 
-export default function Nav() {
+type NavProps = {
+  onAdd: (account: NewAccount) => Promise<void>;
+};
+
+export default function Nav({ onAdd }: NavProps) {
   return (
     <Stack direction="row" spacing={2}>
-      <AddDialog />
+      <AddDialog onAdd={onAdd} />
     </Stack>
   );
 }

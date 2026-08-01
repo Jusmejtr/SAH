@@ -12,7 +12,7 @@
   },
   "license": "ISC",
   "author": "Jusmejtr",
-  "type": "commonjs",
+  "type": "module",
   "main": "main.js",
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
@@ -45,6 +45,8 @@
     "icon": "public/app-icon.svg",
     "files": [
       "main.js",
+      "preload.mjs",
+      "store.js",
       "dist/**/*",
       "package.json"
     ],

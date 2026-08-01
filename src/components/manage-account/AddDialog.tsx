@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import {
+  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -9,12 +10,12 @@ import {
   TextField,
 } from "@mui/material";
 import { FaPlus } from "react-icons/fa";
+import type { NewAccount } from "../../api";
 
-type FormState = {
-  username: string;
-  password: string;
-  sharedSecret: string;
-  displayName: string;
+type FormState = NewAccount;
+
+type AddDialogProps = {
+  onAdd: (account: NewAccount) => Promise<void>;
 };
 
 const initialForm: FormState = {
@@ -24,9 +25,17 @@ const initialForm: FormState = {
   displayName: "",
 };
 
-export default function AddDialog() {
+export default function AddDialog({ onAdd }: AddDialogProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const close = () => {
+    setOpen(false);
+    setForm(initialForm);
+    setError("");
+  };
 
   const handleChange = (field: keyof FormState) => {
     return (event: { target: { value: string } } | any) => {
@@ -35,10 +44,18 @@ export default function AddDialog() {
     };
   };
 
-  const handleSubmit = (event?: { preventDefault: () => void }) => {
+  const handleSubmit = async (event?: { preventDefault: () => void }) => {
     event?.preventDefault();
-    setOpen(false);
-    setForm(initialForm);
+    setSaving(true);
+    setError("");
+    try {
+      await onAdd(form);
+      close();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -50,11 +67,12 @@ export default function AddDialog() {
       >
         Add Account
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth>
+      <Dialog open={open} onClose={close} fullWidth>
         <DialogTitle>Add Steam Account</DialogTitle>
         <DialogContent>
           <form id="add-steam-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
+              {error && <Alert severity="error">{error}</Alert>}
               <TextField
                 label="Username"
                 value={form.username}
@@ -75,7 +93,6 @@ export default function AddDialog() {
                 type="password"
                 value={form.sharedSecret}
                 onChange={handleChange("sharedSecret")}
-                required
                 fullWidth
               />
               <TextField
@@ -83,13 +100,20 @@ export default function AddDialog() {
                 value={form.displayName}
                 onChange={handleChange("displayName")}
                 fullWidth
-              />{" "}
+              />
             </Stack>
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" type="submit" form="add-steam-form">
+          <Button onClick={close} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            type="submit"
+            form="add-steam-form"
+            disabled={saving}
+          >
             Add Account
           </Button>
         </DialogActions>
