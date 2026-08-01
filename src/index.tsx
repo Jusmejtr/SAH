@@ -1,11 +1,20 @@
-import { Button } from "@mui/material";
 import { render } from "preact";
+import Nav from "./components/Nav";
+import AccountCard from "./components/AccountCard";
 
 export function App() {
   return (
-    <Button variant="contained" onClick={() => window.location.href = "https://github.com/Jusmejtr/SAH/"}>
-      Hello world
-    </Button>
+    <div>
+      <Nav />
+      <div style={{ marginTop: "24px" }}>
+        <AccountCard
+          username="ExampleUser"
+          password="********"
+          sharedSecret="J4K2..."
+          displayName="Examplefafaf User"
+        />
+      </div>
+    </div>
   );
 }
 

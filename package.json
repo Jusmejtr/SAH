@@ -27,16 +27,16 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.2.0",
-    "preact": "^10.26.9",
+    "preact": "^10.29.8",
     "react-icons": "^5.7.0"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.2",
-    "concurrently": "^9.2.1",
-    "electron": "^43.1.0",
-    "electron-builder": "^26.0.12",
+    "@preact/preset-vite": "^2.10.6",
+    "concurrently": "^9.2.4",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
-    "vite": "^7.0.4",
+    "vite": "^7.3.6",
     "wait-on": "^8.0.5"
   },
   "build": {
