@@ -26,4 +26,4 @@ jobs:
         run: npm run build
 
       - name: Check main process syntax
-        run: node --check main.js && node --check store.js && node --check preload.mjs
+        run: node --check main.js && node --check store.js && node --check preload.cjs

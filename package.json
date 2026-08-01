@@ -45,7 +45,7 @@
     "icon": "public/app-icon.svg",
     "files": [
       "main.js",
-      "preload.mjs",
+      "preload.cjs",
       "store.js",
       "dist/**/*",
       "package.json"
