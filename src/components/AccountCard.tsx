@@ -2,18 +2,24 @@ import {
   Card,
   CardActionArea,
   CardContent,
-  IconButton,
+  Checkbox,
   Typography,
 } from "@mui/material";
-import { FaTrash } from "react-icons/fa";
 import type { Account } from "../api";
 
 type AccountCardProps = {
   account: Account;
-  onRemove: (id: string) => void;
+  manageMode: boolean;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 };
 
-export default function AccountCard({ account, onRemove }: AccountCardProps) {
+export default function AccountCard({
+  account,
+  manageMode,
+  selected,
+  onToggleSelect,
+}: AccountCardProps) {
   const title = account.displayName || account.username;
 
   return (
@@ -24,17 +30,26 @@ export default function AccountCard({ account, onRemove }: AccountCardProps) {
         borderRadius: 3,
         boxShadow: 3,
         position: "relative",
+        border: selected ? "2px solid" : "1px solid transparent",
+        borderColor: selected ? "primary.main" : "divider",
       }}
     >
-      <IconButton
-        size="small"
-        aria-label={`Remove ${account.username}`}
-        onClick={() => onRemove(account.id)}
-        sx={{ position: "absolute", top: 4, right: 4, zIndex: 1 }}
+      {manageMode && (
+        <Checkbox
+          checked={selected}
+          onChange={() => onToggleSelect(account.id)}
+          onClick={(event) => event.stopPropagation()}
+          sx={{ position: "absolute", top: 4, left: 4, zIndex: 1 }}
+        />
+      )}
+      <CardActionArea
+        sx={{ height: "100%" }}
+        onClick={() => {
+          if (manageMode) {
+            onToggleSelect(account.id);
+          }
+        }}
       >
-        <FaTrash size={12} />
-      </IconButton>
-      <CardActionArea sx={{ height: "100%" }}>
         <CardContent
           sx={{
             height: "100%",
