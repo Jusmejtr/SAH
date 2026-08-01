@@ -36,7 +36,6 @@ const encrypt = (value) =>
 const decrypt = (value) =>
   safeStorage.decryptString(Buffer.from(String(value), "base64"));
 
-// Secrets never leave the main process except through getSecrets.
 const toPublic = (account) => ({
   id: account.id,
   username: account.username,

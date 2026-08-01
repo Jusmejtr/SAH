@@ -30,7 +30,7 @@ export function App() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Nav onAdd={handleAdd} />
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
