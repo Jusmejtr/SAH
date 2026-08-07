@@ -10,6 +10,7 @@ import {
   listAccounts,
   loginAccount,
   onLoginProgress,
+  openLog,
   removeAccount,
 } from "./api";
 import type { Account, NewAccount } from "./api";
@@ -162,6 +163,9 @@ export function App() {
         busy={Boolean(loggingInId)}
         onCancel={() => {
           void cancelLogin();
+        }}
+        onOpenLog={() => {
+          void openLog();
         }}
       />
     </Box>

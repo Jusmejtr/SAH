@@ -27,6 +27,7 @@ type SahApi = {
   removeAccount: (id: string) => Promise<Account[]>;
   loginAccount: (id: string) => Promise<LoginResult>;
   cancelLogin: () => Promise<boolean>;
+  openLog: () => Promise<string>;
   onLoginProgress: (callback: (step: string) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
   setSettings: (settings: AppSettings) => Promise<AppSettings>;
@@ -50,5 +51,6 @@ export const addAccount = (account: NewAccount) => getApi().addAccount(account);
 export const removeAccount = (id: string) => getApi().removeAccount(id);
 export const loginAccount = (id: string) => getApi().loginAccount(id);
 export const cancelLogin = () => getApi().cancelLogin();
+export const openLog = () => getApi().openLog();
 export const onLoginProgress = (callback: (step: string) => void) =>
   getApi().onLoginProgress(callback);

@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { clipboard } from "electron";
 import { generateGuardCode } from "./steamGuard.js";
 import { applyMostRecentUser } from "./loginUsers.js";
+import { log } from "./log.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -14,6 +15,8 @@ const isWindows = process.platform === "win32";
 const isMac = process.platform === "darwin";
 
 const GUARD_PROMPT_DELAY_MS = 6000;
+
+const TITLE_PATTERN = "Sign in to Steam|Steam Login|Steam Guard|Prihl";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -37,7 +40,7 @@ export const cancelLogin = () => {
   return true;
 };
 
-const runPowerShell = (script, env = {}, job) => {
+const runPowerShell = (script, env = {}, job, label = "powershell") => {
   const file = path.join(
     os.tmpdir(),
     `sah-${crypto.randomBytes(8).toString("hex")}.ps1`,
@@ -56,9 +59,14 @@ const runPowerShell = (script, env = {}, job) => {
         file,
       ],
       { env: { ...process.env, ...env }, windowsHide: true },
-      (error, stdout) => {
+      (error, stdout, stderr) => {
         job?.children.delete(child);
         fs.rmSync(file, { force: true });
+
+        log(`[${label}] exit=${error?.code ?? 0}`);
+        if (stdout.trim()) log(`[${label}] stdout:\n${stdout.trim()}`);
+        if (stderr.trim()) log(`[${label}] stderr:\n${stderr.trim()}`);
+
         if (error) reject(error);
         else resolve(stdout.trim());
       },
@@ -134,7 +142,10 @@ export const isSteamRunning = async () => {
 
 /** Graceful `-shutdown` first, force kill only if Steam ignores it. */
 export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
-  if (!(await isSteamRunning())) return;
+  if (!(await isSteamRunning())) {
+    log("shutdown: steam was not running");
+    return;
+  }
 
   if (isWindows) {
     spawn(steamExe, ["-shutdown"], {
@@ -150,9 +161,15 @@ export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
   while (Date.now() < deadline) {
     await delay(500);
     if (job) throwIfCancelled(job);
-    if (!(await isSteamRunning())) return;
+    if (!(await isSteamRunning())) {
+      log("shutdown: graceful exit");
+      // Steam keeps writing its config files for a moment after the process is gone.
+      await delay(2000);
+      return;
+    }
   }
 
+  log("shutdown: forcing taskkill");
   if (isWindows) {
     await execFileAsync("taskkill.exe", ["/F", "/IM", "steam.exe", "/T"], {
       windowsHide: true,
@@ -160,7 +177,7 @@ export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
   } else {
     await execFileAsync("pkill", ["-x", "steam_osx"]).catch(() => {});
   }
-  await delay(1500);
+  await delay(2500);
 };
 
 const launchSteam = (steamExe, username, password) => {
@@ -210,32 +227,59 @@ public class SahWin32 {
   [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int processId);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
 }
 "@
-`;
 
-const WAIT_FOR_WINDOW = `${WIN32_TYPES}
-$pattern = 'Sign in to Steam|Steam Login|Steam Guard|Steam - Prihl'
-$deadline = (Get-Date).AddSeconds([int]$env:SAH_WAIT_SECONDS)
-
-while ((Get-Date) -lt $deadline) {
-  $script:found = [IntPtr]::Zero
+function Get-SteamWindows {
+  $script:hits = @()
   $callback = [SahWin32+EnumProc]{
     param($hWnd, $lParam)
     if (-not [SahWin32]::IsWindowVisible($hWnd)) { return $true }
     $builder = New-Object System.Text.StringBuilder 512
     [void][SahWin32]::GetWindowText($hWnd, $builder, $builder.Capacity)
-    if ($builder.ToString() -notmatch $pattern) { return $true }
+    $title = $builder.ToString()
+    if (-not $title) { return $true }
     $ownerId = 0
     [void][SahWin32]::GetWindowThreadProcessId($hWnd, [ref]$ownerId)
     $owner = Get-Process -Id $ownerId -ErrorAction SilentlyContinue
-    if ($owner -and $owner.ProcessName -like 'steam*') { $script:found = $hWnd; return $false }
+    if ($owner -and $owner.ProcessName -like 'steam*') {
+      $script:hits += [pscustomobject]@{
+        Handle = [int64]$hWnd
+        Title = $title
+        Process = $owner.ProcessName
+      }
+    }
     return $true
   }
   [void][SahWin32]::EnumWindows($callback, [IntPtr]::Zero)
-  if ($script:found -ne [IntPtr]::Zero) { Write-Output ([int64]$script:found); exit 0 }
+  return $script:hits
+}
+`;
+
+const WAIT_FOR_WINDOW = `${WIN32_TYPES}
+$pattern = $env:SAH_TITLE_PATTERN
+$deadline = (Get-Date).AddSeconds([int]$env:SAH_WAIT_SECONDS)
+$seen = ''
+
+while ((Get-Date) -lt $deadline) {
+  $windows = @(Get-SteamWindows)
+  $snapshot = ($windows | ForEach-Object { "$($_.Process)|$($_.Title)" }) -join ';'
+  if ($snapshot -ne $seen) {
+    $seen = $snapshot
+    foreach ($window in $windows) {
+      Write-Output "SEEN\`t$($window.Process)\`t$($window.Handle)\`t$($window.Title)"
+    }
+    if ($windows.Count -eq 0) { Write-Output "SEEN\`t(no steam windows)" }
+  }
+
+  $match = $windows | Where-Object { $_.Title -match $pattern } | Select-Object -First 1
+  if ($match) { Write-Output "MATCH\`t$($match.Handle)"; exit 0 }
   Start-Sleep -Milliseconds 500
 }
+
+$fallback = @(Get-SteamWindows) | Select-Object -First 1
+if ($fallback) { Write-Output "FALLBACK\`t$($fallback.Handle)"; exit 0 }
 exit 2
 `;
 
@@ -243,11 +287,17 @@ const SEND_CODE = `${WIN32_TYPES}
 Add-Type -AssemblyName System.Windows.Forms
 $handle = [IntPtr][int64]$env:SAH_WINDOW_HANDLE
 [void][SahWin32]::ShowWindow($handle, 9)
-if (-not [SahWin32]::SetForegroundWindow($handle)) { exit 3 }
+[void][SahWin32]::SetForegroundWindow($handle)
 Start-Sleep -Milliseconds 800
+
+$active = [SahWin32]::GetForegroundWindow()
+Write-Output "FOREGROUND\`t$([int64]$active)\`texpected\`t$([int64]$handle)"
+if ($active -ne $handle) { exit 3 }
+
 [System.Windows.Forms.SendKeys]::SendWait($env:SAH_GUARD_CODE)
 Start-Sleep -Milliseconds 200
 [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+Write-Output 'SENT'
 `;
 
 /**
@@ -264,6 +314,7 @@ export const loginToSteam = async (
   try {
     onProgress("Locating Steam");
     const steamExe = await resolveSteamExe();
+    log("login: exe", steamExe, "user", username, "hasSecret", Boolean(sharedSecret));
     throwIfCancelled(job);
 
     onProgress("Closing running Steam");
@@ -277,6 +328,7 @@ export const loginToSteam = async (
       // stops the client from showing its account picker.
       remembered = applyMostRecentUser(path.dirname(steamExe), username);
       await setAutoLoginUser(username);
+      log("login: remembered session", remembered);
       throwIfCancelled(job);
     }
 
@@ -291,20 +343,38 @@ export const loginToSteam = async (
     }
 
     onProgress("Waiting for the Steam sign-in window");
-    let handle = "";
+    let output = "";
     try {
-      handle = await runPowerShell(
+      output = await runPowerShell(
         WAIT_FOR_WINDOW,
-        { SAH_WAIT_SECONDS: String(remembered ? 25 : 60) },
+        {
+          SAH_WAIT_SECONDS: String(remembered ? 30 : 60),
+          SAH_TITLE_PATTERN: TITLE_PATTERN,
+        },
         job,
+        "wait-for-window",
       );
     } catch (error) {
       throwIfCancelled(job);
       if (error instanceof CancelledError) throw error;
-      // No sign-in window means Steam restored the saved session on its own.
+      log("login: no steam window at all, assuming auto sign-in");
       return { status: "auto-login" };
     }
     throwIfCancelled(job);
+
+    const result = output
+      .split(/\r?\n/)
+      .map((line) => line.split("\t"))
+      .find(([kind]) => kind === "MATCH" || kind === "FALLBACK");
+
+    if (!result) {
+      log("login: window search returned no handle");
+      clipboard.writeText(generateGuardCode(sharedSecret));
+      return { status: "code-copied" };
+    }
+
+    const [kind, handle] = result;
+    log("login: using window", handle, "via", kind);
 
     try {
       onProgress("Waiting for the Steam Guard prompt");
@@ -319,6 +389,7 @@ export const loginToSteam = async (
           SAH_GUARD_CODE: generateGuardCode(sharedSecret),
         },
         job,
+        "send-code",
       );
       return { status: "signed-in" };
     } catch (error) {
@@ -327,6 +398,9 @@ export const loginToSteam = async (
       clipboard.writeText(generateGuardCode(sharedSecret));
       return { status: "code-copied" };
     }
+  } catch (error) {
+    log("login: failed", error.message);
+    throw error;
   } finally {
     if (activeJob === job) activeJob = null;
   }

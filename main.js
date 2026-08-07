@@ -10,6 +10,7 @@ import {
   setSettings,
 } from "./store.js";
 import { cancelLogin, CancelledError, loginToSteam } from "./steam.js";
+import { log, openLog } from "./log.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDevelopment = !app.isPackaged;
@@ -46,6 +47,7 @@ app.whenReady().then(() => {
   ipcMain.handle("accounts:remove", (_event, id) => removeAccount(id));
   ipcMain.handle("accounts:login", async (event, id) => {
     const report = (step) => {
+      if (step) log("step:", step);
       if (!event.sender.isDestroyed()) event.sender.send("login:progress", step);
     };
 
@@ -59,6 +61,7 @@ app.whenReady().then(() => {
     }
   });
   ipcMain.handle("accounts:login-cancel", () => cancelLogin());
+  ipcMain.handle("debug:open-log", () => openLog());
   ipcMain.handle("settings:get", () => getSettings());
   ipcMain.handle("settings:set", (_event, settings) => setSettings(settings));
 

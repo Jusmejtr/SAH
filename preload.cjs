@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("sah", {
   removeAccount: (id) => ipcRenderer.invoke("accounts:remove", id),
   loginAccount: (id) => ipcRenderer.invoke("accounts:login", id),
   cancelLogin: () => ipcRenderer.invoke("accounts:login-cancel"),
+  openLog: () => ipcRenderer.invoke("debug:open-log"),
   onLoginProgress: (callback) => {
     const listener = (_event, step) => callback(step);
     ipcRenderer.on("login:progress", listener);

@@ -10,9 +10,10 @@ type FooterProps = {
   step: string;
   busy: boolean;
   onCancel: () => void;
+  onOpenLog: () => void;
 };
 
-export default function Footer({ step, busy, onCancel }: FooterProps) {
+export default function Footer({ step, busy, onCancel, onOpenLog }: FooterProps) {
   return (
     <Paper
       square
@@ -38,6 +39,9 @@ export default function Footer({ step, busy, onCancel }: FooterProps) {
         {busy ? step || "Working…" : "Idle"}
       </Typography>
       <Box sx={{ flexGrow: 1 }} />
+      <Button size="small" onClick={onOpenLog}>
+        Open log
+      </Button>
       <Button size="small" color="error" disabled={!busy} onClick={onCancel}>
         Cancel
       </Button>
