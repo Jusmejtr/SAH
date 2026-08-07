@@ -6,7 +6,6 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { clipboard } from "electron";
 import { generateGuardCode } from "./steamGuard.js";
-import { applyMostRecentUser } from "./loginUsers.js";
 import { log } from "./log.js";
 
 const execFileAsync = promisify(execFile);
@@ -202,16 +201,21 @@ const launchSteam = (steamExe, username) => {
 const escapeSendKeys = (value) =>
   String(value).replace(/[+^%~(){}\[\]]/g, (character) => `{${character}}`);
 
+// Without this Steam opens its saved-account picker instead of the sign-in form.
 const setAutoLoginUser = async (username) => {
-  const key = "HKCU\\Software\\Valve\\Steam";
   await execFileAsync(
     "reg.exe",
-    ["add", key, "/v", "AutoLoginUser", "/t", "REG_SZ", "/d", username, "/f"],
-    { windowsHide: true },
-  );
-  await execFileAsync(
-    "reg.exe",
-    ["add", key, "/v", "RememberPassword", "/t", "REG_DWORD", "/d", "1", "/f"],
+    [
+      "add",
+      "HKCU\\Software\\Valve\\Steam",
+      "/v",
+      "AutoLoginUser",
+      "/t",
+      "REG_SZ",
+      "/d",
+      username,
+      "/f",
+    ],
     { windowsHide: true },
   );
 };
@@ -319,6 +323,15 @@ Start-Sleep -Milliseconds 200
 Write-Output 'CODE-SENT'
 `;
 
+// Activates the "enter a code instead" link shown when the account confirms sign-ins
+// through the mobile app.
+const SWITCH_TO_CODE_ENTRY = `${FOCUS_WINDOW}
+[System.Windows.Forms.SendKeys]::SendWait('{TAB}')
+Start-Sleep -Milliseconds 300
+[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+Write-Output 'SWITCHED'
+`;
+
 /** Returns the sign-in window handle, or "" when Steam signed in without asking. */
 const findSignInWindow = async (job, waitSeconds) => {
   let output = "";
@@ -371,14 +384,9 @@ export const loginToSteam = async (
     await shutdownSteam(steamExe, job);
     throwIfCancelled(job);
 
-    let remembered = false;
     if (isWindows) {
-      onProgress("Preparing account data");
-      // Both steps are needed: the registry value picks the account, the vdf flag
-      // stops the client from showing its account picker.
-      remembered = applyMostRecentUser(path.dirname(steamExe), username);
+      onProgress("Selecting the account");
       await setAutoLoginUser(username);
-      log("login: remembered session", remembered);
       throwIfCancelled(job);
     }
 
@@ -391,7 +399,7 @@ export const loginToSteam = async (
     }
 
     onProgress("Waiting for the Steam sign-in window");
-    const handle = await findSignInWindow(job, remembered ? 30 : 60);
+    const handle = await findSignInWindow(job, 60);
 
     if (!handle) {
       log("login: no sign-in window, Steam restored the saved session");
@@ -420,24 +428,50 @@ export const loginToSteam = async (
     await delay(GUARD_PROMPT_DELAY_MS);
     throwIfCancelled(job);
 
-    try {
+    // The sign-in window closing is the only reliable signal that a step worked, so
+    // each attempt is verified before falling back to the mobile-confirmation layout.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const current = await findSignInWindow(job, 1);
+      if (!current) return { status: "signed-in" };
+
+      if (attempt > 0) {
+        onProgress("Switching to code entry");
+        await runPowerShell(
+          SWITCH_TO_CODE_ENTRY,
+          { SAH_WINDOW_HANDLE: current },
+          job,
+          "switch-to-code-entry",
+        ).catch((error) => {
+          throwIfCancelled(job);
+          log("login: switch to code entry failed", error.message);
+        });
+        await delay(2000);
+        throwIfCancelled(job);
+      }
+
       onProgress("Entering Steam Guard code");
       await runPowerShell(
         SEND_CODE,
         {
-          SAH_WINDOW_HANDLE: handle,
+          SAH_WINDOW_HANDLE: current,
           SAH_GUARD_CODE: generateGuardCode(sharedSecret),
         },
         job,
         "send-code",
-      );
-      return { status: "signed-in" };
-    } catch (error) {
+      ).catch((error) => {
+        throwIfCancelled(job);
+        log("login: code typing failed", error.message);
+      });
+
+      await delay(4000);
       throwIfCancelled(job);
-      if (error instanceof CancelledError) throw error;
-      clipboard.writeText(generateGuardCode(sharedSecret));
-      return { status: "code-copied" };
     }
+
+    if (!(await findSignInWindow(job, 1))) return { status: "signed-in" };
+
+    log("login: sign-in window still open, leaving the code in the clipboard");
+    clipboard.writeText(generateGuardCode(sharedSecret));
+    return { status: "code-copied" };
   } catch (error) {
     log("login: failed", error.message);
     throw error;
