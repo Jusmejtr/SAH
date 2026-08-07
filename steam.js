@@ -13,6 +13,8 @@ const execFileAsync = promisify(execFile);
 const isWindows = process.platform === "win32";
 const isMac = process.platform === "darwin";
 
+const GUARD_PROMPT_DELAY_MS = 6000;
+
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class CancelledError extends Error {
@@ -161,10 +163,8 @@ export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
   await delay(1500);
 };
 
-const launchSteam = (steamExe, username, password, remembered) => {
-  // A remembered account signs in from its stored token, so passing credentials would
-  // re-open the login form instead.
-  const args = remembered ? [] : ["-login", username, password];
+const launchSteam = (steamExe, username, password) => {
+  const args = ["-login", username, password];
 
   if (isWindows) {
     spawn(steamExe, args, {
@@ -195,23 +195,56 @@ const setAutoLoginUser = async (username) => {
   );
 };
 
-const WAIT_FOR_WINDOW = `
+// The sign-in UI belongs to steamwebhelper.exe, so the window has to be found by
+// title across every Steam process instead of through steam.exe's MainWindow.
+const WIN32_TYPES = `
+Add-Type -TypeDefinition @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public class SahWin32 {
+  public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr lParam);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+  [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int processId);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
+}
+"@
+`;
+
+const WAIT_FOR_WINDOW = `${WIN32_TYPES}
+$pattern = 'Sign in to Steam|Steam Login|Steam Guard|Steam - Prihl'
 $deadline = (Get-Date).AddSeconds([int]$env:SAH_WAIT_SECONDS)
+
 while ((Get-Date) -lt $deadline) {
-  $proc = Get-Process -Name steam -ErrorAction SilentlyContinue |
-    Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle } |
-    Select-Object -First 1
-  if ($proc) { Write-Output $proc.Id; exit 0 }
+  $script:found = [IntPtr]::Zero
+  $callback = [SahWin32+EnumProc]{
+    param($hWnd, $lParam)
+    if (-not [SahWin32]::IsWindowVisible($hWnd)) { return $true }
+    $builder = New-Object System.Text.StringBuilder 512
+    [void][SahWin32]::GetWindowText($hWnd, $builder, $builder.Capacity)
+    if ($builder.ToString() -notmatch $pattern) { return $true }
+    $ownerId = 0
+    [void][SahWin32]::GetWindowThreadProcessId($hWnd, [ref]$ownerId)
+    $owner = Get-Process -Id $ownerId -ErrorAction SilentlyContinue
+    if ($owner -and $owner.ProcessName -like 'steam*') { $script:found = $hWnd; return $false }
+    return $true
+  }
+  [void][SahWin32]::EnumWindows($callback, [IntPtr]::Zero)
+  if ($script:found -ne [IntPtr]::Zero) { Write-Output ([int64]$script:found); exit 0 }
   Start-Sleep -Milliseconds 500
 }
 exit 2
 `;
 
-const SEND_CODE = `
+const SEND_CODE = `${WIN32_TYPES}
 Add-Type -AssemblyName System.Windows.Forms
-$shell = New-Object -ComObject WScript.Shell
-if (-not $shell.AppActivate([int]$env:SAH_STEAM_PID)) { exit 3 }
-Start-Sleep -Milliseconds 600
+$handle = [IntPtr][int64]$env:SAH_WINDOW_HANDLE
+[void][SahWin32]::ShowWindow($handle, 9)
+if (-not [SahWin32]::SetForegroundWindow($handle)) { exit 3 }
+Start-Sleep -Milliseconds 800
 [System.Windows.Forms.SendKeys]::SendWait($env:SAH_GUARD_CODE)
 Start-Sleep -Milliseconds 200
 [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
@@ -248,12 +281,7 @@ export const loginToSteam = async (
     }
 
     onProgress("Starting Steam");
-    launchSteam(steamExe, username, password, remembered);
-
-    if (remembered) {
-      if (sharedSecret) clipboard.writeText(generateGuardCode(sharedSecret));
-      return { status: "auto-login" };
-    }
+    launchSteam(steamExe, username, password);
 
     if (!sharedSecret) return { status: "launched" };
 
@@ -262,20 +290,34 @@ export const loginToSteam = async (
       return { status: "code-copied" };
     }
 
+    onProgress("Waiting for the Steam sign-in window");
+    let handle = "";
     try {
-      onProgress("Waiting for the Steam window");
-      const pid = await runPowerShell(
+      handle = await runPowerShell(
         WAIT_FOR_WINDOW,
-        { SAH_WAIT_SECONDS: "60" },
+        { SAH_WAIT_SECONDS: String(remembered ? 25 : 60) },
         job,
       );
+    } catch (error) {
+      throwIfCancelled(job);
+      if (error instanceof CancelledError) throw error;
+      // No sign-in window means Steam restored the saved session on its own.
+      return { status: "auto-login" };
+    }
+    throwIfCancelled(job);
+
+    try {
+      onProgress("Waiting for the Steam Guard prompt");
+      await delay(GUARD_PROMPT_DELAY_MS);
       throwIfCancelled(job);
 
       onProgress("Entering Steam Guard code");
-      const code = generateGuardCode(sharedSecret);
       await runPowerShell(
         SEND_CODE,
-        { SAH_STEAM_PID: pid, SAH_GUARD_CODE: code },
+        {
+          SAH_WINDOW_HANDLE: handle,
+          SAH_GUARD_CODE: generateGuardCode(sharedSecret),
+        },
         job,
       );
       return { status: "signed-in" };
