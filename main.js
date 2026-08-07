@@ -3,11 +3,13 @@ import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, Menu, ipcMain } from "electron";
 import {
   addAccount,
+  getSecrets,
   getSettings,
   listAccounts,
   removeAccount,
   setSettings,
 } from "./store.js";
+import { cancelLogin, CancelledError, loginToSteam } from "./steam.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDevelopment = !app.isPackaged;
@@ -42,6 +44,21 @@ app.whenReady().then(() => {
   ipcMain.handle("accounts:list", () => listAccounts());
   ipcMain.handle("accounts:add", (_event, account) => addAccount(account));
   ipcMain.handle("accounts:remove", (_event, id) => removeAccount(id));
+  ipcMain.handle("accounts:login", async (event, id) => {
+    const report = (step) => {
+      if (!event.sender.isDestroyed()) event.sender.send("login:progress", step);
+    };
+
+    try {
+      return await loginToSteam(getSecrets(id), report);
+    } catch (error) {
+      if (error instanceof CancelledError) return { status: "cancelled" };
+      throw error;
+    } finally {
+      report("");
+    }
+  });
+  ipcMain.handle("accounts:login-cancel", () => cancelLogin());
   ipcMain.handle("settings:get", () => getSettings());
   ipcMain.handle("settings:set", (_event, settings) => setSettings(settings));
 

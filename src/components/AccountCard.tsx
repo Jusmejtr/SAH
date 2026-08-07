@@ -3,6 +3,7 @@ import {
   CardActionArea,
   CardContent,
   Checkbox,
+  CircularProgress,
   Typography,
 } from "@mui/material";
 import type { Account } from "../api";
@@ -11,14 +12,18 @@ type AccountCardProps = {
   account: Account;
   manageMode: boolean;
   selected: boolean;
+  busy: boolean;
   onToggleSelect: (id: string) => void;
+  onLogin: (id: string) => void;
 };
 
 export default function AccountCard({
   account,
   manageMode,
   selected,
+  busy,
   onToggleSelect,
+  onLogin,
 }: AccountCardProps) {
   const title = account.displayName || account.username;
 
@@ -44,10 +49,13 @@ export default function AccountCard({
       )}
       <CardActionArea
         sx={{ height: "100%" }}
+        disabled={busy}
         onClick={() => {
           if (manageMode) {
             onToggleSelect(account.id);
+            return;
           }
+          onLogin(account.id);
         }}
       >
         <CardContent
@@ -60,13 +68,19 @@ export default function AccountCard({
             textAlign: "center",
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {title}
-          </Typography>
-          {account.displayName && (
-            <Typography variant="body2" color="text.secondary">
-              {account.username}
-            </Typography>
+          {busy ? (
+            <CircularProgress size={32} />
+          ) : (
+            <>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {title}
+              </Typography>
+              {account.displayName && (
+                <Typography variant="body2" color="text.secondary">
+                  {account.username}
+                </Typography>
+              )}
+            </>
           )}
         </CardContent>
       </CardActionArea>

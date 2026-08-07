@@ -17,10 +17,17 @@ export type AppSettings = {
   maximize: boolean;
 };
 
+export type LoginResult = {
+  status: "signed-in" | "auto-login" | "launched" | "code-copied" | "cancelled";
+};
+
 type SahApi = {
   listAccounts: () => Promise<Account[]>;
   addAccount: (account: NewAccount) => Promise<Account>;
   removeAccount: (id: string) => Promise<Account[]>;
+  loginAccount: (id: string) => Promise<LoginResult>;
+  cancelLogin: () => Promise<boolean>;
+  onLoginProgress: (callback: (step: string) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
   setSettings: (settings: AppSettings) => Promise<AppSettings>;
 };
@@ -41,3 +48,7 @@ const getApi = (): SahApi => {
 export const listAccounts = () => getApi().listAccounts();
 export const addAccount = (account: NewAccount) => getApi().addAccount(account);
 export const removeAccount = (id: string) => getApi().removeAccount(id);
+export const loginAccount = (id: string) => getApi().loginAccount(id);
+export const cancelLogin = () => getApi().cancelLogin();
+export const onLoginProgress = (callback: (step: string) => void) =>
+  getApi().onLoginProgress(callback);

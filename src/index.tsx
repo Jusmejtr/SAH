@@ -1,16 +1,37 @@
 import { useEffect, useState } from "preact/hooks";
 import { render } from "preact";
-import { Alert, Box, Stack, Typography } from "@mui/material";
+import { Alert, Box, Snackbar, Stack, Typography } from "@mui/material";
 import Nav from "./components/Nav";
 import AccountCard from "./components/AccountCard";
-import { addAccount, listAccounts, removeAccount } from "./api";
+import Footer from "./components/Footer";
+import {
+  addAccount,
+  cancelLogin,
+  listAccounts,
+  loginAccount,
+  onLoginProgress,
+  removeAccount,
+} from "./api";
 import type { Account, NewAccount } from "./api";
+
+const LOGIN_MESSAGES = {
+  "signed-in": "Steam is signing in.",
+  "auto-login": "Steam is resuming the saved session.",
+  launched: "Steam started. No shared secret stored, enter the code manually.",
+  "code-copied": "Steam started. Guard code copied to the clipboard.",
+  cancelled: "Login cancelled.",
+} as const;
 
 export function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
+  const [step, setStep] = useState("");
+  const [loggingInId, setLoggingInId] = useState("");
   const [manageMode, setManageMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => onLoginProgress(setStep), []);
 
   useEffect(() => {
     listAccounts()
@@ -32,6 +53,24 @@ export function App() {
   const handleToggleManage = () => {
     setManageMode((prev) => !prev);
     setSelectedIds([]);
+  };
+
+  const handleLogin = async (id: string) => {
+    if (loggingInId) return;
+
+    setError("");
+    setStatus("");
+    setLoggingInId(id);
+
+    try {
+      const result = await loginAccount(id);
+      setStatus(LOGIN_MESSAGES[result.status]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoggingInId("");
+      setStep("");
+    }
   };
 
   const handleToggleSelect = (id: string) => {
@@ -73,7 +112,7 @@ export function App() {
     accounts.length > 0 && selectedIds.length === accounts.length;
 
   return (
-    <Box>
+    <Box sx={{ pb: 8 }}>
       <Nav
         onAdd={handleAdd}
         manageMode={manageMode}
@@ -105,11 +144,26 @@ export function App() {
               account={account}
               manageMode={manageMode}
               selected={selectedIds.includes(account.id)}
+              busy={loggingInId === account.id}
               onToggleSelect={handleToggleSelect}
+              onLogin={handleLogin}
             />
           ))}
         </Stack>
       )}
+      <Snackbar
+        open={Boolean(status)}
+        autoHideDuration={5000}
+        onClose={() => setStatus("")}
+        message={status}
+      />
+      <Footer
+        step={step}
+        busy={Boolean(loggingInId)}
+        onCancel={() => {
+          void cancelLogin();
+        }}
+      />
     </Box>
   );
 }
