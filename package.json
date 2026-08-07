@@ -51,6 +51,7 @@
       "steam.js",
       "steamGuard.js",
       "steamPage.js",
+      "loginUsers.js",
       "cef.js",
       "log.js",
       "dist/**/*",

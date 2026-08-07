@@ -4,6 +4,7 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { clipboard } from "electron";
 import { generateGuardCode } from "./steamGuard.js";
+import { applyMostRecentUser } from "./loginUsers.js";
 import { findPage } from "./cef.js";
 import { INSTALL, PROBE } from "./steamPage.js";
 import { log } from "./log.js";
@@ -228,13 +229,20 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
     const profilePicker = /who'?s playing/i.test(page.text);
 
     if (profilePicker) {
-      onProgress("Choosing the profile");
-      const wanted = [displayName, username].filter(Boolean);
+      onProgress("Choosing the account");
+      const wanted = [displayName, username].filter(Boolean).map(escapeRegex);
       const clicked = await session.evaluate(
-        `window.__sah.clickText(${quote(wanted.map(escapeRegex).join("|"))})`,
+        `window.__sah.clickText(${quote(wanted.join("|"))})`,
       );
-      log("drive: picked profile", wanted.join("|"), clicked);
-      if (!clicked) return "manual";
+      log("drive: picked account", wanted.join("|"), clicked);
+
+      if (!clicked) {
+        const added = await session.evaluate(
+          `window.__sah.clickText(${quote("add an account|add account|different account|sign in with")})`,
+        );
+        log("drive: opened the add-account form", added);
+        if (!added) return "manual";
+      }
     } else if (hasPassword) {
       onProgress("Entering credentials");
       await session.evaluate(
@@ -290,7 +298,14 @@ export const loginToSteam = async (credentials, onProgress = () => {}) => {
     if (isWindows) {
       onProgress("Selecting the account");
       enableCefDebugging(steamExe);
+      // The registry value and the vdf flag together stop Steam from opening its
+      // saved-account picker.
       await setAutoLoginUser(credentials.username);
+      const known = applyMostRecentUser(
+        path.dirname(steamExe),
+        credentials.username,
+      );
+      log("login: account known to Steam", known);
       throwIfCancelled(job);
     }
 
