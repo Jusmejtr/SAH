@@ -103,7 +103,6 @@ export const isSteamRunning = async () => {
   }
 };
 
-/** Graceful `-shutdown` first, force kill only if Steam ignores it. */
 export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
   if (!(await isSteamRunning())) {
     log("shutdown: steam was not running");
@@ -190,12 +189,35 @@ const quote = (value) => JSON.stringify(String(value));
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Drives the sign-in page by reading its actual DOM on every pass, so the flow adapts
- * to the credential form, the Steam Guard screen and the mobile-confirmation screen.
+ * Classifies the current sign-in screen from its DOM. Order matters: the mobile
+ * confirmation screen also mentions Steam Guard, so it has to be checked before the
+ * code screen.
  */
+export const detectScreen = (page, credentialsSent) => {
+  const text = page.text ?? "";
+  const codeBoxes = page.inputs.filter(
+    (input) => input.type !== "password" && input.maxLength === 1,
+  );
+
+  if (/who'?s playing/i.test(text)) return "account-picker";
+  if (page.inputs.some((input) => input.type === "password")) return "credentials";
+  if (/mobile app|steam app|approve|use your phone/i.test(text) && codeBoxes.length === 0) {
+    return "mobile-confirm";
+  }
+  if (codeBoxes.length > 0 || /enter the code|steam guard code/i.test(text)) {
+    return "guard-code";
+  }
+  if (credentialsSent && page.inputs.length === 0) return "signed-in";
+  return "unknown";
+};
+
+/** Drives the sign-in page, one screen at a time, by reading its real DOM. */
 const driveSignIn = async (session, job, onProgress, credentials) => {
   const { username, displayName, password, sharedSecret } = credentials;
   const deadline = Date.now() + SIGN_IN_TIMEOUT_MS;
+  const click = (pattern) =>
+    session.evaluate(`window.__sah.clickText(${quote(pattern)})`);
+
   let credentialsSent = false;
   let lastSummary = "";
 
@@ -217,60 +239,61 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
     });
     if (summary !== lastSummary) {
       lastSummary = summary;
-      log("drive: screen", page.url, "\n", page.text, "\n", summary);
+      log("drive: dom", page.url, "\n", page.text, "\n", summary);
     }
 
-    const hasPassword = page.inputs.some((input) => input.type === "password");
-    const codeBoxes = page.inputs.filter(
-      (input) => input.type !== "password" && input.maxLength === 1,
-    );
-    const wantsCode = codeBoxes.length > 0 || /steam guard|enter the code/i.test(page.text);
-    const mobileScreen = /mobile app|steam app|approve|confirm .*sign/i.test(page.text);
-    const profilePicker = /who'?s playing/i.test(page.text);
+    const screen = detectScreen(page, credentialsSent);
+    log("drive: screen =", screen);
 
-    if (profilePicker) {
-      onProgress("Choosing the account");
-      const wanted = [displayName, username].filter(Boolean).map(escapeRegex);
-      const clicked = await session.evaluate(
-        `window.__sah.clickText(${quote(wanted.join("|"))})`,
-      );
-      log("drive: picked account", wanted.join("|"), clicked);
-
-      if (!clicked) {
-        const added = await session.evaluate(
-          `window.__sah.clickText(${quote("add an account|add account|different account|sign in with")})`,
-        );
-        log("drive: opened the add-account form", added);
-        if (!added) return "manual";
+    switch (screen) {
+      case "account-picker": {
+        onProgress("Choosing the account");
+        const wanted = [displayName, username].filter(Boolean).map(escapeRegex);
+        if (await click(wanted.join("|"))) break;
+        if (await click("add an account|add account|different account|sign in with")) break;
+        return "manual";
       }
-    } else if (hasPassword) {
-      onProgress("Entering credentials");
-      await session.evaluate(
-        `window.__sah.fillCredentials(${quote(username)}, ${quote(password)})`,
-      );
-      await delay(300);
-      await session.evaluate(`window.__sah.click(${quote("sign in|prihl|log in")})`);
-      credentialsSent = true;
-    } else if (wantsCode) {
-      if (!sharedSecret) return "launched";
-      onProgress("Entering Steam Guard code");
-      const filled = await session.evaluate(
-        `window.__sah.fillCode(${quote(generateGuardCode(sharedSecret))})`,
-      );
-      log("drive: code filled", filled);
-      await delay(400);
-      await session.evaluate(
-        `window.__sah.click(${quote("submit|confirm|continue|sign in")})`,
-      );
-    } else if (mobileScreen) {
-      onProgress("Switching to Steam Guard code");
-      const switched = await session.evaluate(
-        `window.__sah.click(${quote("code|instead|guard")})`,
-      );
-      log("drive: switched to code entry", switched);
-      if (!switched) return "manual";
-    } else if (credentialsSent && page.inputs.length === 0) {
-      return "signed-in";
+
+      case "credentials": {
+        onProgress("Entering credentials");
+        await session.evaluate(
+          `window.__sah.fillCredentials(${quote(username)}, ${quote(password)})`,
+        );
+        await delay(300);
+        await session.evaluate(`window.__sah.click(${quote("sign in|prihl|log in")})`);
+        credentialsSent = true;
+        break;
+      }
+
+      case "mobile-confirm": {
+        onProgress("Switching to Steam Guard code");
+        const switched = await click(
+          "enter a code|use a code|code instead|steam guard code|enter code",
+        );
+        log("drive: switched to code entry", switched);
+        if (!switched) return "manual";
+        break;
+      }
+
+      case "guard-code": {
+        if (!sharedSecret) return "launched";
+        onProgress("Entering Steam Guard code");
+        const filled = await session.evaluate(
+          `window.__sah.fillCode(${quote(generateGuardCode(sharedSecret))})`,
+        );
+        log("drive: code filled", filled);
+        await delay(400);
+        await session.evaluate(
+          `window.__sah.click(${quote("submit|confirm|continue|sign in")})`,
+        );
+        break;
+      }
+
+      case "signed-in":
+        return "signed-in";
+
+      default:
+        break;
     }
 
     await delay(STEP_INTERVAL_MS);

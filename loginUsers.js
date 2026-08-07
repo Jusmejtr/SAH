@@ -50,10 +50,6 @@ const stringifyVdf = (value, depth = 0) => {
     .join("");
 };
 
-/**
- * Makes `username` the only "most recent" entry so Steam opens its sign-in screen for
- * that account instead of the saved-account picker. Returns whether the account is known.
- */
 export const applyMostRecentUser = (installDir, username) => {
   const file = path.join(installDir, "config", "loginusers.vdf");
 
