@@ -1,11 +1,11 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import crypto from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { clipboard } from "electron";
 import { generateGuardCode } from "./steamGuard.js";
+import { findPage } from "./cef.js";
+import { INSTALL, PROBE } from "./steamPage.js";
 import { log } from "./log.js";
 
 const execFileAsync = promisify(execFile);
@@ -13,9 +13,8 @@ const execFileAsync = promisify(execFile);
 const isWindows = process.platform === "win32";
 const isMac = process.platform === "darwin";
 
-const GUARD_PROMPT_DELAY_MS = 6000;
-
-const TITLE_PATTERN = "Sign in to Steam|Steam Login|Steam Guard|Prihl";
+const SIGN_IN_TIMEOUT_MS = 90000;
+const STEP_INTERVAL_MS = 1500;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -35,43 +34,7 @@ const throwIfCancelled = (job) => {
 export const cancelLogin = () => {
   if (!activeJob) return false;
   activeJob.cancelled = true;
-  for (const child of activeJob.children) child.kill();
   return true;
-};
-
-const runPowerShell = (script, env = {}, job, label = "powershell") => {
-  const file = path.join(
-    os.tmpdir(),
-    `sah-${crypto.randomBytes(8).toString("hex")}.ps1`,
-  );
-  fs.writeFileSync(file, script, { mode: 0o600 });
-
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        file,
-      ],
-      { env: { ...process.env, ...env }, windowsHide: true },
-      (error, stdout, stderr) => {
-        job?.children.delete(child);
-        fs.rmSync(file, { force: true });
-
-        log(`[${label}] exit=${error?.code ?? 0}`);
-        if (stdout.trim()) log(`[${label}] stdout:\n${stdout.trim()}`);
-        if (stderr.trim()) log(`[${label}] stderr:\n${stderr.trim()}`);
-
-        if (error) reject(error);
-        else resolve(stdout.trim());
-      },
-    );
-    job?.children.add(child);
-  });
 };
 
 const readSteamExeFromRegistry = async () => {
@@ -162,7 +125,6 @@ export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
     if (job) throwIfCancelled(job);
     if (!(await isSteamRunning())) {
       log("shutdown: graceful exit");
-      // Steam keeps writing its config files for a moment after the process is gone.
       await delay(2000);
       return;
     }
@@ -178,28 +140,6 @@ export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
   }
   await delay(2500);
 };
-
-// The new client ignores a password passed on the command line, so only the username is prefilled.
-const launchSteam = (steamExe, username) => {
-  const args = ["-login", username];
-
-  if (isWindows) {
-    spawn(steamExe, args, {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-    }).unref();
-    return;
-  }
-
-  spawn("open", ["-a", steamExe, "--args", ...args], {
-    detached: true,
-    stdio: "ignore",
-  }).unref();
-};
-
-const escapeSendKeys = (value) =>
-  String(value).replace(/[+^%~(){}\[\]]/g, (character) => `{${character}}`);
 
 // Without this Steam opens its saved-account picker instead of the sign-in form.
 const setAutoLoginUser = async (username) => {
@@ -220,164 +160,115 @@ const setAutoLoginUser = async (username) => {
   );
 };
 
-// The sign-in UI belongs to steamwebhelper.exe, so the window has to be found by
-// title across every Steam process instead of through steam.exe's MainWindow.
-const WIN32_TYPES = `
-Add-Type -TypeDefinition @"
-using System;
-using System.Text;
-using System.Runtime.InteropServices;
-public class SahWin32 {
-  public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
-  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr lParam);
-  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
-  [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int processId);
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-}
-"@
-
-function Get-SteamWindows {
-  $script:hits = @()
-  $callback = [SahWin32+EnumProc]{
-    param($hWnd, $lParam)
-    if (-not [SahWin32]::IsWindowVisible($hWnd)) { return $true }
-    $builder = New-Object System.Text.StringBuilder 512
-    [void][SahWin32]::GetWindowText($hWnd, $builder, $builder.Capacity)
-    $title = $builder.ToString()
-    if (-not $title) { return $true }
-    $ownerId = 0
-    [void][SahWin32]::GetWindowThreadProcessId($hWnd, [ref]$ownerId)
-    $owner = Get-Process -Id $ownerId -ErrorAction SilentlyContinue
-    if ($owner -and $owner.ProcessName -like 'steam*') {
-      $script:hits += [pscustomobject]@{
-        Handle = [int64]$hWnd
-        Title = $title
-        Process = $owner.ProcessName
-      }
-    }
-    return $true
-  }
-  [void][SahWin32]::EnumWindows($callback, [IntPtr]::Zero)
-  return $script:hits
-}
-`;
-
-const WAIT_FOR_WINDOW = `${WIN32_TYPES}
-$pattern = $env:SAH_TITLE_PATTERN
-$deadline = (Get-Date).AddSeconds([int]$env:SAH_WAIT_SECONDS)
-$seen = ''
-
-while ((Get-Date) -lt $deadline) {
-  $windows = @(Get-SteamWindows)
-  $snapshot = ($windows | ForEach-Object { "$($_.Process)|$($_.Title)" }) -join ';'
-  if ($snapshot -ne $seen) {
-    $seen = $snapshot
-    foreach ($window in $windows) {
-      Write-Output "SEEN\`t$($window.Process)\`t$($window.Handle)\`t$($window.Title)"
-    }
-    if ($windows.Count -eq 0) { Write-Output "SEEN\`t(no steam windows)" }
-  }
-
-  $match = $windows | Where-Object { $_.Title -match $pattern } | Select-Object -First 1
-  if ($match) { Write-Output "MATCH\`t$($match.Handle)"; exit 0 }
-  Start-Sleep -Milliseconds 500
-}
-
-$fallback = @(Get-SteamWindows) | Select-Object -First 1
-if ($fallback) { Write-Output "FALLBACK\`t$($fallback.Handle)"; exit 0 }
-exit 2
-`;
-
-const FOCUS_WINDOW = `${WIN32_TYPES}
-Add-Type -AssemblyName System.Windows.Forms
-$handle = [IntPtr][int64]$env:SAH_WINDOW_HANDLE
-[void][SahWin32]::ShowWindow($handle, 9)
-[void][SahWin32]::SetForegroundWindow($handle)
-Start-Sleep -Milliseconds 900
-
-$active = [SahWin32]::GetForegroundWindow()
-Write-Output "FOREGROUND\`t$([int64]$active)\`texpected\`t$([int64]$handle)"
-if ($active -ne $handle) { exit 3 }
-`;
-
-const SEND_CREDENTIALS = `${FOCUS_WINDOW}
-[System.Windows.Forms.SendKeys]::SendWait('^a')
-[System.Windows.Forms.SendKeys]::SendWait($env:SAH_USERNAME)
-Start-Sleep -Milliseconds 300
-[System.Windows.Forms.SendKeys]::SendWait('{TAB}')
-Start-Sleep -Milliseconds 300
-[System.Windows.Forms.SendKeys]::SendWait('^a')
-[System.Windows.Forms.SendKeys]::SendWait($env:SAH_PASSWORD)
-Start-Sleep -Milliseconds 300
-[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-Write-Output 'CREDENTIALS-SENT'
-`;
-
-const SEND_CODE = `${FOCUS_WINDOW}
-[System.Windows.Forms.SendKeys]::SendWait($env:SAH_GUARD_CODE)
-Start-Sleep -Milliseconds 200
-[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-Write-Output 'CODE-SENT'
-`;
-
-// Activates the "enter a code instead" link shown when the account confirms sign-ins
-// through the mobile app.
-const SWITCH_TO_CODE_ENTRY = `${FOCUS_WINDOW}
-[System.Windows.Forms.SendKeys]::SendWait('{TAB}')
-Start-Sleep -Milliseconds 300
-[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-Write-Output 'SWITCHED'
-`;
-
-/** Returns the sign-in window handle, or "" when Steam signed in without asking. */
-const findSignInWindow = async (job, waitSeconds) => {
-  let output = "";
-  try {
-    output = await runPowerShell(
-      WAIT_FOR_WINDOW,
-      {
-        SAH_WAIT_SECONDS: String(waitSeconds),
-        SAH_TITLE_PATTERN: TITLE_PATTERN,
-      },
-      job,
-      "wait-for-window",
-    );
-  } catch (error) {
-    throwIfCancelled(job);
-    if (error instanceof CancelledError) throw error;
-    return "";
-  }
-  throwIfCancelled(job);
-
-  const result = output
-    .split(/\r?\n/)
-    .map((line) => line.split("\t"))
-    .find(([kind]) => kind === "MATCH" || kind === "FALLBACK");
-
-  if (!result) return "";
-
-  log("login: using window", result[1], "via", result[0]);
-  return result[1];
+// Steam only exposes its CEF pages for inspection when this marker file exists at startup.
+const enableCefDebugging = (steamExe) => {
+  const marker = path.join(
+    path.dirname(steamExe),
+    ".cef-enable-remote-debugging",
+  );
+  if (fs.existsSync(marker)) return;
+  fs.writeFileSync(marker, "");
+  log("cef: created", marker);
 };
 
+const launchSteam = (steamExe) => {
+  if (isWindows) {
+    spawn(steamExe, [], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    }).unref();
+    return;
+  }
+
+  spawn("open", ["-a", steamExe], { detached: true, stdio: "ignore" }).unref();
+};
+
+const quote = (value) => JSON.stringify(String(value));
+
 /**
- * Restarts Steam and signs the given account in.
- * The Steam Guard code is generated after the login window appears so it cannot expire mid-flow.
+ * Drives the sign-in page by reading its actual DOM on every pass, so the flow adapts
+ * to the credential form, the Steam Guard screen and the mobile-confirmation screen.
  */
-export const loginToSteam = async (
-  { username, password, sharedSecret },
-  onProgress = () => {},
-) => {
-  const job = { cancelled: false, children: new Set() };
+const driveSignIn = async (session, job, onProgress, credentials) => {
+  const { username, password, sharedSecret } = credentials;
+  const deadline = Date.now() + SIGN_IN_TIMEOUT_MS;
+  let credentialsSent = false;
+  let lastSummary = "";
+
+  while (Date.now() < deadline) {
+    throwIfCancelled(job);
+
+    let page;
+    try {
+      page = await session.evaluate("window.__sah.describe()");
+    } catch (error) {
+      log("drive: page is gone", error.message);
+      return credentialsSent ? "signed-in" : "timeout";
+    }
+
+    const summary = JSON.stringify({
+      inputs: page.inputs,
+      buttons: page.buttons.map((button) => button.text),
+    });
+    if (summary !== lastSummary) {
+      lastSummary = summary;
+      log("drive: screen", page.url, "\n", page.text, "\n", summary);
+    }
+
+    const hasPassword = page.inputs.some((input) => input.type === "password");
+    const codeBoxes = page.inputs.filter(
+      (input) => input.type !== "password" && input.maxLength === 1,
+    );
+    const wantsCode = codeBoxes.length > 0 || /steam guard|enter the code/i.test(page.text);
+    const mobileScreen = /mobile app|steam app|approve|confirm .*sign/i.test(page.text);
+
+    if (hasPassword) {
+      onProgress("Entering credentials");
+      await session.evaluate(
+        `window.__sah.fillCredentials(${quote(username)}, ${quote(password)})`,
+      );
+      await delay(300);
+      await session.evaluate(`window.__sah.click(${quote("sign in|prihl|log in")})`);
+      credentialsSent = true;
+    } else if (wantsCode) {
+      if (!sharedSecret) return "launched";
+      onProgress("Entering Steam Guard code");
+      const filled = await session.evaluate(
+        `window.__sah.fillCode(${quote(generateGuardCode(sharedSecret))})`,
+      );
+      log("drive: code filled", filled);
+      await delay(400);
+      await session.evaluate(
+        `window.__sah.click(${quote("submit|confirm|continue|sign in")})`,
+      );
+    } else if (mobileScreen) {
+      onProgress("Switching to Steam Guard code");
+      const switched = await session.evaluate(
+        `window.__sah.click(${quote("code|instead|guard")})`,
+      );
+      log("drive: switched to code entry", switched);
+      if (!switched) return "manual";
+    } else if (credentialsSent && page.inputs.length === 0) {
+      return "signed-in";
+    }
+
+    await delay(STEP_INTERVAL_MS);
+  }
+
+  return "timeout";
+};
+
+/** Restarts Steam and signs the given account in. */
+export const loginToSteam = async (credentials, onProgress = () => {}) => {
+  const job = { cancelled: false };
   activeJob = job;
+  let session = null;
 
   try {
     onProgress("Locating Steam");
     const steamExe = await resolveSteamExe();
-    log("login: exe", steamExe, "user", username, "hasSecret", Boolean(sharedSecret));
+    log("login: exe", steamExe, "user", credentials.username);
     throwIfCancelled(job);
 
     onProgress("Closing running Steam");
@@ -386,96 +277,39 @@ export const loginToSteam = async (
 
     if (isWindows) {
       onProgress("Selecting the account");
-      await setAutoLoginUser(username);
+      enableCefDebugging(steamExe);
+      await setAutoLoginUser(credentials.username);
       throwIfCancelled(job);
     }
 
     onProgress("Starting Steam");
-    launchSteam(steamExe, username);
+    launchSteam(steamExe);
 
-    if (!isWindows) {
-      if (sharedSecret) clipboard.writeText(generateGuardCode(sharedSecret));
-      return { status: "code-copied" };
-    }
+    onProgress("Waiting for the sign-in page");
+    session = await findPage(PROBE, 90000, () => job.cancelled);
+    throwIfCancelled(job);
 
-    onProgress("Waiting for the Steam sign-in window");
-    const handle = await findSignInWindow(job, 60);
-
-    if (!handle) {
-      log("login: no sign-in window, Steam restored the saved session");
+    if (!session) {
+      log("login: no sign-in page, Steam restored the saved session");
       return { status: "auto-login" };
     }
 
-    onProgress("Entering credentials");
-    await runPowerShell(
-      SEND_CREDENTIALS,
-      {
-        SAH_WINDOW_HANDLE: handle,
-        SAH_USERNAME: escapeSendKeys(username),
-        SAH_PASSWORD: escapeSendKeys(password),
-      },
-      job,
-      "send-credentials",
-    ).catch((error) => {
-      throwIfCancelled(job);
-      log("login: credential typing failed", error.message);
-    });
-    throwIfCancelled(job);
+    await session.evaluate(INSTALL);
+    const outcome = await driveSignIn(session, job, onProgress, credentials);
+    log("login: outcome", outcome);
 
-    if (!sharedSecret) return { status: "launched" };
+    if (outcome === "signed-in") return { status: "signed-in" };
+    if (outcome === "launched") return { status: "launched" };
 
-    onProgress("Waiting for the Steam Guard prompt");
-    await delay(GUARD_PROMPT_DELAY_MS);
-    throwIfCancelled(job);
-
-    // The sign-in window closing is the only reliable signal that a step worked, so
-    // each attempt is verified before falling back to the mobile-confirmation layout.
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const current = await findSignInWindow(job, 1);
-      if (!current) return { status: "signed-in" };
-
-      if (attempt > 0) {
-        onProgress("Switching to code entry");
-        await runPowerShell(
-          SWITCH_TO_CODE_ENTRY,
-          { SAH_WINDOW_HANDLE: current },
-          job,
-          "switch-to-code-entry",
-        ).catch((error) => {
-          throwIfCancelled(job);
-          log("login: switch to code entry failed", error.message);
-        });
-        await delay(2000);
-        throwIfCancelled(job);
-      }
-
-      onProgress("Entering Steam Guard code");
-      await runPowerShell(
-        SEND_CODE,
-        {
-          SAH_WINDOW_HANDLE: current,
-          SAH_GUARD_CODE: generateGuardCode(sharedSecret),
-        },
-        job,
-        "send-code",
-      ).catch((error) => {
-        throwIfCancelled(job);
-        log("login: code typing failed", error.message);
-      });
-
-      await delay(4000);
-      throwIfCancelled(job);
+    if (credentials.sharedSecret) {
+      clipboard.writeText(generateGuardCode(credentials.sharedSecret));
     }
-
-    if (!(await findSignInWindow(job, 1))) return { status: "signed-in" };
-
-    log("login: sign-in window still open, leaving the code in the clipboard");
-    clipboard.writeText(generateGuardCode(sharedSecret));
     return { status: "code-copied" };
   } catch (error) {
     log("login: failed", error.message);
     throw error;
   } finally {
+    session?.close();
     if (activeJob === job) activeJob = null;
   }
 };
