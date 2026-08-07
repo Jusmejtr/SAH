@@ -186,12 +186,14 @@ const launchSteam = (steamExe) => {
 
 const quote = (value) => JSON.stringify(String(value));
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
  * Drives the sign-in page by reading its actual DOM on every pass, so the flow adapts
  * to the credential form, the Steam Guard screen and the mobile-confirmation screen.
  */
 const driveSignIn = async (session, job, onProgress, credentials) => {
-  const { username, password, sharedSecret } = credentials;
+  const { username, displayName, password, sharedSecret } = credentials;
   const deadline = Date.now() + SIGN_IN_TIMEOUT_MS;
   let credentialsSent = false;
   let lastSummary = "";
@@ -210,6 +212,7 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
     const summary = JSON.stringify({
       inputs: page.inputs,
       buttons: page.buttons.map((button) => button.text),
+      texts: page.texts,
     });
     if (summary !== lastSummary) {
       lastSummary = summary;
@@ -222,8 +225,17 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
     );
     const wantsCode = codeBoxes.length > 0 || /steam guard|enter the code/i.test(page.text);
     const mobileScreen = /mobile app|steam app|approve|confirm .*sign/i.test(page.text);
+    const profilePicker = /who'?s playing/i.test(page.text);
 
-    if (hasPassword) {
+    if (profilePicker) {
+      onProgress("Choosing the profile");
+      const wanted = [displayName, username].filter(Boolean);
+      const clicked = await session.evaluate(
+        `window.__sah.clickText(${quote(wanted.map(escapeRegex).join("|"))})`,
+      );
+      log("drive: picked profile", wanted.join("|"), clicked);
+      if (!clicked) return "manual";
+    } else if (hasPassword) {
       onProgress("Entering credentials");
       await session.evaluate(
         `window.__sah.fillCredentials(${quote(username)}, ${quote(password)})`,

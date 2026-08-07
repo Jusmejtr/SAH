@@ -108,6 +108,7 @@ export const getSecrets = (id) => {
   if (!account) throw new Error("Account not found.");
   return {
     username: account.username,
+    displayName: account.displayName ?? "",
     password: decrypt(account.password),
     sharedSecret: account.sharedSecret ? decrypt(account.sharedSecret) : "",
   };

@@ -30,8 +30,25 @@ window.__sah = (() => {
 
   const clickables = () =>
     Array.from(
-      document.querySelectorAll('button, a, [role="button"], [type="submit"]'),
+      document.querySelectorAll(
+        'button, a, [role="button"], [type="submit"], [tabindex], [onclick]',
+      ),
     ).filter(isVisible);
+
+  const leaves = () =>
+    Array.from(document.querySelectorAll("body *")).filter(
+      (el) => el.children.length === 0 && isVisible(el),
+    );
+
+  // React ignores a bare .click() on some tiles, so the full pointer sequence is replayed.
+  const fireClick = (el) => {
+    el.scrollIntoView({ block: "center" });
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+      el.dispatchEvent(
+        new MouseEvent(type, { bubbles: true, cancelable: true, view: window }),
+      );
+    }
+  };
 
   return {
     describe() {
@@ -52,6 +69,13 @@ window.__sah = (() => {
           text: label(el),
           disabled: Boolean(el.disabled),
         })),
+        texts: Array.from(
+          new Set(
+            leaves()
+              .map((el) => (el.innerText || "").trim())
+              .filter((text) => text && text.length <= 60),
+          ),
+        ),
       };
     },
 
@@ -86,7 +110,21 @@ window.__sah = (() => {
         (el) => !el.disabled && regex.test(label(el)),
       );
       if (!target) return false;
-      target.click();
+      fireClick(target);
+      return true;
+    },
+
+    /** Clicks anything showing the given text, including plain tiles without a role. */
+    clickText(pattern) {
+      const regex = new RegExp(pattern, "i");
+      const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
+      if (!leaf) return false;
+
+      const target =
+        leaf.closest('button, a, [role="button"], [tabindex], [onclick]') ??
+        leaf.parentElement ??
+        leaf;
+      fireClick(target);
       return true;
     },
   };
@@ -99,6 +137,6 @@ export const PROBE = `
 (() => {
   const text = document.body ? document.body.innerText : "";
   return Boolean(document.querySelector('input[type="password"]')) ||
-    /sign in to steam|steam guard|mobile authenticator|enter the code/i.test(text);
+    /sign in to steam|steam guard|mobile authenticator|enter the code|who's playing|whos playing/i.test(text);
 })()
 `;
