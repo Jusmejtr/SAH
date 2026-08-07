@@ -16,9 +16,9 @@ import {
 import type { Account, NewAccount } from "./api";
 
 const LOGIN_MESSAGES = {
-  "signed-in": "Steam is signing in.",
-  "auto-login": "Steam is resuming the saved session.",
-  launched: "Steam started. No shared secret stored, enter the code manually.",
+  "signed-in": "Credentials and Steam Guard code submitted.",
+  "auto-login": "Steam resumed the saved session for this account.",
+  launched: "Credentials submitted. No shared secret stored, enter the code manually.",
   "code-copied": "Steam started. Guard code copied to the clipboard.",
   cancelled: "Login cancelled.",
 } as const;

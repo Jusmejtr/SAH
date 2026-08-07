@@ -180,8 +180,9 @@ export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
   await delay(2500);
 };
 
-const launchSteam = (steamExe, username, password) => {
-  const args = ["-login", username, password];
+// The new client ignores a password passed on the command line, so only the username is prefilled.
+const launchSteam = (steamExe, username) => {
+  const args = ["-login", username];
 
   if (isWindows) {
     spawn(steamExe, args, {
@@ -197,6 +198,9 @@ const launchSteam = (steamExe, username, password) => {
     stdio: "ignore",
   }).unref();
 };
+
+const escapeSendKeys = (value) =>
+  String(value).replace(/[+^%~(){}\[\]]/g, (character) => `{${character}}`);
 
 const setAutoLoginUser = async (username) => {
   const key = "HKCU\\Software\\Valve\\Steam";
@@ -283,22 +287,68 @@ if ($fallback) { Write-Output "FALLBACK\`t$($fallback.Handle)"; exit 0 }
 exit 2
 `;
 
-const SEND_CODE = `${WIN32_TYPES}
+const FOCUS_WINDOW = `${WIN32_TYPES}
 Add-Type -AssemblyName System.Windows.Forms
 $handle = [IntPtr][int64]$env:SAH_WINDOW_HANDLE
 [void][SahWin32]::ShowWindow($handle, 9)
 [void][SahWin32]::SetForegroundWindow($handle)
-Start-Sleep -Milliseconds 800
+Start-Sleep -Milliseconds 900
 
 $active = [SahWin32]::GetForegroundWindow()
 Write-Output "FOREGROUND\`t$([int64]$active)\`texpected\`t$([int64]$handle)"
 if ($active -ne $handle) { exit 3 }
+`;
 
+const SEND_CREDENTIALS = `${FOCUS_WINDOW}
+[System.Windows.Forms.SendKeys]::SendWait('^a')
+[System.Windows.Forms.SendKeys]::SendWait($env:SAH_USERNAME)
+Start-Sleep -Milliseconds 300
+[System.Windows.Forms.SendKeys]::SendWait('{TAB}')
+Start-Sleep -Milliseconds 300
+[System.Windows.Forms.SendKeys]::SendWait('^a')
+[System.Windows.Forms.SendKeys]::SendWait($env:SAH_PASSWORD)
+Start-Sleep -Milliseconds 300
+[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+Write-Output 'CREDENTIALS-SENT'
+`;
+
+const SEND_CODE = `${FOCUS_WINDOW}
 [System.Windows.Forms.SendKeys]::SendWait($env:SAH_GUARD_CODE)
 Start-Sleep -Milliseconds 200
 [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-Write-Output 'SENT'
+Write-Output 'CODE-SENT'
 `;
+
+/** Returns the sign-in window handle, or "" when Steam signed in without asking. */
+const findSignInWindow = async (job, waitSeconds) => {
+  let output = "";
+  try {
+    output = await runPowerShell(
+      WAIT_FOR_WINDOW,
+      {
+        SAH_WAIT_SECONDS: String(waitSeconds),
+        SAH_TITLE_PATTERN: TITLE_PATTERN,
+      },
+      job,
+      "wait-for-window",
+    );
+  } catch (error) {
+    throwIfCancelled(job);
+    if (error instanceof CancelledError) throw error;
+    return "";
+  }
+  throwIfCancelled(job);
+
+  const result = output
+    .split(/\r?\n/)
+    .map((line) => line.split("\t"))
+    .find(([kind]) => kind === "MATCH" || kind === "FALLBACK");
+
+  if (!result) return "";
+
+  log("login: using window", result[1], "via", result[0]);
+  return result[1];
+};
 
 /**
  * Restarts Steam and signs the given account in.
@@ -333,54 +383,44 @@ export const loginToSteam = async (
     }
 
     onProgress("Starting Steam");
-    launchSteam(steamExe, username, password);
-
-    if (!sharedSecret) return { status: "launched" };
+    launchSteam(steamExe, username);
 
     if (!isWindows) {
-      clipboard.writeText(generateGuardCode(sharedSecret));
+      if (sharedSecret) clipboard.writeText(generateGuardCode(sharedSecret));
       return { status: "code-copied" };
     }
 
     onProgress("Waiting for the Steam sign-in window");
-    let output = "";
-    try {
-      output = await runPowerShell(
-        WAIT_FOR_WINDOW,
-        {
-          SAH_WAIT_SECONDS: String(remembered ? 30 : 60),
-          SAH_TITLE_PATTERN: TITLE_PATTERN,
-        },
-        job,
-        "wait-for-window",
-      );
-    } catch (error) {
-      throwIfCancelled(job);
-      if (error instanceof CancelledError) throw error;
-      log("login: no steam window at all, assuming auto sign-in");
+    const handle = await findSignInWindow(job, remembered ? 30 : 60);
+
+    if (!handle) {
+      log("login: no sign-in window, Steam restored the saved session");
       return { status: "auto-login" };
     }
+
+    onProgress("Entering credentials");
+    await runPowerShell(
+      SEND_CREDENTIALS,
+      {
+        SAH_WINDOW_HANDLE: handle,
+        SAH_USERNAME: escapeSendKeys(username),
+        SAH_PASSWORD: escapeSendKeys(password),
+      },
+      job,
+      "send-credentials",
+    ).catch((error) => {
+      throwIfCancelled(job);
+      log("login: credential typing failed", error.message);
+    });
     throwIfCancelled(job);
 
-    const result = output
-      .split(/\r?\n/)
-      .map((line) => line.split("\t"))
-      .find(([kind]) => kind === "MATCH" || kind === "FALLBACK");
+    if (!sharedSecret) return { status: "launched" };
 
-    if (!result) {
-      log("login: window search returned no handle");
-      clipboard.writeText(generateGuardCode(sharedSecret));
-      return { status: "code-copied" };
-    }
-
-    const [kind, handle] = result;
-    log("login: using window", handle, "via", kind);
+    onProgress("Waiting for the Steam Guard prompt");
+    await delay(GUARD_PROMPT_DELAY_MS);
+    throwIfCancelled(job);
 
     try {
-      onProgress("Waiting for the Steam Guard prompt");
-      await delay(GUARD_PROMPT_DELAY_MS);
-      throwIfCancelled(job);
-
       onProgress("Entering Steam Guard code");
       await runPowerShell(
         SEND_CODE,
