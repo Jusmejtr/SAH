@@ -3,16 +3,15 @@ import path from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { clipboard } from "electron";
-import { generateGuardCode } from "./steamGuard.js";
-import { applyMostRecentUser } from "./loginUsers.js";
-import { findPage } from "./cef.js";
-import { INSTALL, PROBE } from "./steamPage.js";
-import { log } from "./log.js";
+import { generateGuardCode } from "../../steamGuard.js";
+import { applyMostRecentUser } from "../../loginUsers.js";
+import { findPage } from "../../cef.js";
+import { log } from "../../log.js";
+import { isSteamRunning, isWindows, resolveSteamExe, shutdownSteam } from "../utils/steam-helper.js";
+import { INSTALL, PROBE } from "../../steamPage.js";
 
 const execFileAsync = promisify(execFile);
 
-const isWindows = process.platform === "win32";
-const isMac = process.platform === "darwin";
 
 const SIGN_IN_TIMEOUT_MS = 90000;
 const STEP_INTERVAL_MS = 1500;
@@ -36,109 +35,6 @@ export const cancelLogin = () => {
   if (!activeJob) return false;
   activeJob.cancelled = true;
   return true;
-};
-
-const readSteamExeFromRegistry = async () => {
-  const queries = [
-    ["HKCU\\Software\\Valve\\Steam", "SteamExe"],
-    ["HKLM\\SOFTWARE\\WOW6432Node\\Valve\\Steam", "InstallPath"],
-    ["HKLM\\SOFTWARE\\Valve\\Steam", "InstallPath"],
-  ];
-
-  for (const [key, value] of queries) {
-    try {
-      const { stdout } = await execFileAsync(
-        "reg.exe",
-        ["query", key, "/v", value],
-        { windowsHide: true },
-      );
-      const match = stdout.match(/REG_SZ\s+(.+)\s*$/m);
-      if (!match) continue;
-      const raw = match[1].trim().replace(/\//g, "\\");
-      const exe = value === "SteamExe" ? raw : path.join(raw, "steam.exe");
-      if (fs.existsSync(exe)) return exe;
-    } catch {
-      // key missing, try the next one
-    }
-  }
-  return "";
-};
-
-export const resolveSteamExe = async () => {
-  if (!isWindows) {
-    if (isMac) return "/Applications/Steam.app";
-    throw new Error("Automatic Steam login is supported on Windows only.");
-  }
-
-  const fromRegistry = await readSteamExeFromRegistry();
-  if (fromRegistry) return fromRegistry;
-
-  const fallbacks = [
-    path.join(process.env["ProgramFiles(x86)"] ?? "", "Steam", "steam.exe"),
-    path.join(process.env.ProgramFiles ?? "", "Steam", "steam.exe"),
-  ];
-  const found = fallbacks.find(
-    (candidate) => candidate && fs.existsSync(candidate),
-  );
-  if (found) return found;
-
-  throw new Error("Steam installation was not found.");
-};
-
-export const isSteamRunning = async () => {
-  if (isWindows) {
-    const { stdout } = await execFileAsync(
-      "tasklist.exe",
-      ["/FI", "IMAGENAME eq steam.exe", "/NH"],
-      { windowsHide: true },
-    );
-    return stdout.toLowerCase().includes("steam.exe");
-  }
-
-  try {
-    await execFileAsync("pgrep", ["-x", "steam_osx"]);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const shutdownSteam = async (steamExe, job, timeoutMs = 15000) => {
-  if (!(await isSteamRunning())) {
-    log("shutdown: steam was not running");
-    return;
-  }
-
-  if (isWindows) {
-    spawn(steamExe, ["-shutdown"], {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-    }).unref();
-  } else {
-    execFile("osascript", ["-e", 'quit app "Steam"']).unref?.();
-  }
-
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    await delay(500);
-    if (job) throwIfCancelled(job);
-    if (!(await isSteamRunning())) {
-      log("shutdown: graceful exit");
-      await delay(2000);
-      return;
-    }
-  }
-
-  log("shutdown: forcing taskkill");
-  if (isWindows) {
-    await execFileAsync("taskkill.exe", ["/F", "/IM", "steam.exe", "/T"], {
-      windowsHide: true,
-    }).catch(() => {});
-  } else {
-    await execFileAsync("pkill", ["-x", "steam_osx"]).catch(() => {});
-  }
-  await delay(2500);
 };
 
 // Without this Steam opens its saved-account picker instead of the sign-in form.
@@ -186,7 +82,8 @@ const launchSteam = (steamExe) => {
 
 const quote = (value) => JSON.stringify(String(value));
 
-const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegex = (value) =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Classifies the current sign-in screen from its DOM. Order matters: the mobile
@@ -200,8 +97,12 @@ export const detectScreen = (page, credentialsSent) => {
   );
 
   if (/who'?s playing/i.test(text)) return "account-picker";
-  if (page.inputs.some((input) => input.type === "password")) return "credentials";
-  if (/mobile app|steam app|approve|use your phone/i.test(text) && codeBoxes.length === 0) {
+  if (page.inputs.some((input) => input.type === "password"))
+    return "credentials";
+  if (
+    /mobile app|steam app|approve|use your phone/i.test(text) &&
+    codeBoxes.length === 0
+  ) {
     return "mobile-confirm";
   }
   if (codeBoxes.length > 0 || /enter the code|steam guard code/i.test(text)) {
@@ -250,7 +151,12 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
         onProgress("Choosing the account");
         const wanted = [displayName, username].filter(Boolean).map(escapeRegex);
         if (await click(wanted.join("|"))) break;
-        if (await click("add an account|add account|different account|sign in with")) break;
+        if (
+          await click(
+            "add an account|add account|different account|sign in with",
+          )
+        )
+          break;
         return "manual";
       }
 
@@ -260,7 +166,9 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
           `window.__sah.fillCredentials(${quote(username)}, ${quote(password)})`,
         );
         await delay(300);
-        await session.evaluate(`window.__sah.click(${quote("sign in|prihl|log in")})`);
+        await session.evaluate(
+          `window.__sah.click(${quote("sign in|prihl|log in")})`,
+        );
         credentialsSent = true;
         break;
       }
@@ -302,7 +210,6 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
   return "timeout";
 };
 
-/** Restarts Steam and signs the given account in. */
 export const loginToSteam = async (credentials, onProgress = () => {}) => {
   const job = { cancelled: false };
   activeJob = job;

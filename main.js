@@ -9,7 +9,7 @@ import {
   removeAccount,
   setSettings,
 } from "./store.js";
-import { cancelLogin, CancelledError, loginToSteam } from "./steam.js";
+import { cancelLogin, CancelledError, loginToSteam } from "./src/lib/steam.js";
 import { log, openLog } from "./log.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
