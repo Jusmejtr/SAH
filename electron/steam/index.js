@@ -1,18 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import { clipboard } from "electron";
 import { generateGuardCode } from "./guard.js";
-import { applyMostRecentUser } from "./login-users.js";
 import { findPage } from "./cef.js";
 import { log } from "../log.js";
 import { CancelledError, throwIfCancelled } from "../errors.js";
 import { isSteamRunning, isWindows, resolveSteamExe, shutdownSteam } from "./process.js";
 import { INSTALL, PROBE } from "./page-scripts.js";
-
-const execFileAsync = promisify(execFile);
-
 
 const SIGN_IN_TIMEOUT_MS = 90000;
 const STEP_INTERVAL_MS = 1500;
@@ -25,25 +20,6 @@ export const cancelLogin = () => {
   if (!activeJob) return false;
   activeJob.cancelled = true;
   return true;
-};
-
-// Without this Steam opens its saved-account picker instead of the sign-in form.
-const setAutoLoginUser = async (username) => {
-  await execFileAsync(
-    "reg.exe",
-    [
-      "add",
-      "HKCU\\Software\\Valve\\Steam",
-      "/v",
-      "AutoLoginUser",
-      "/t",
-      "REG_SZ",
-      "/d",
-      username,
-      "/f",
-    ],
-    { windowsHide: true },
-  );
 };
 
 // Steam only exposes its CEF pages for inspection when this marker file exists at startup.
@@ -216,16 +192,8 @@ export const loginToSteam = async (credentials, onProgress = () => {}) => {
     throwIfCancelled(job);
 
     if (isWindows) {
-      onProgress("Selecting the account");
+      onProgress("Preparing Steam");
       enableCefDebugging(steamExe);
-      // The registry value and the vdf flag together stop Steam from opening its
-      // saved-account picker.
-      await setAutoLoginUser(credentials.username);
-      const known = applyMostRecentUser(
-        path.dirname(steamExe),
-        credentials.username,
-      );
-      log("login: account known to Steam", known);
       throwIfCancelled(job);
     }
 
