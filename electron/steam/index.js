@@ -3,12 +3,13 @@ import path from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { clipboard } from "electron";
-import { generateGuardCode } from "../../steamGuard.js";
-import { applyMostRecentUser } from "../../loginUsers.js";
-import { findPage } from "../../cef.js";
-import { log } from "../../log.js";
-import { isSteamRunning, isWindows, resolveSteamExe, shutdownSteam } from "../utils/steam-helper.js";
-import { INSTALL, PROBE } from "../../steamPage.js";
+import { generateGuardCode } from "./guard.js";
+import { applyMostRecentUser } from "./login-users.js";
+import { findPage } from "./cef.js";
+import { log } from "../log.js";
+import { CancelledError, throwIfCancelled } from "../errors.js";
+import { isSteamRunning, isWindows, resolveSteamExe, shutdownSteam } from "./process.js";
+import { INSTALL, PROBE } from "./page-scripts.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -18,18 +19,7 @@ const STEP_INTERVAL_MS = 1500;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export class CancelledError extends Error {
-  constructor() {
-    super("Cancelled.");
-    this.name = "CancelledError";
-  }
-}
-
 let activeJob = null;
-
-const throwIfCancelled = (job) => {
-  if (job.cancelled) throw new CancelledError();
-};
 
 export const cancelLogin = () => {
   if (!activeJob) return false;

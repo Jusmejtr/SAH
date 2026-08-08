@@ -13,15 +13,13 @@
   "license": "ISC",
   "author": "Jusmejtr",
   "type": "module",
-  "main": "main.js",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "start": "electron .",
+    "dev": "vite",
     "build": "vite build",
-    "dist:win": "npm run build && electron-builder --win portable",
-    "dist:win:installer": "npm run build && electron-builder --win nsis",
     "preview": "vite preview",
-    "vite:dev": "vite --host 127.0.0.1 --port 5173 --strictPort"
+    "dist:win": "npm run build && electron-builder --win portable",
+    "dist:win:installer": "npm run build && electron-builder --win nsis"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -33,27 +31,18 @@
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
-    "concurrently": "^10.0.4",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
-    "wait-on": "^9.1.0"
+    "vite-plugin-electron": "^1.1.1"
   },
   "build": {
     "appId": "com.jusmejtr.sah",
     "productName": "Steam Account Helper",
     "icon": "public/app-icon.svg",
     "files": [
-      "main.js",
-      "preload.cjs",
-      "store.js",
-      "steam.js",
-      "steamGuard.js",
-      "steamPage.js",
-      "loginUsers.js",
-      "cef.js",
-      "log.js",
+      "dist-electron/**/*",
       "dist/**/*",
       "package.json"
     ],

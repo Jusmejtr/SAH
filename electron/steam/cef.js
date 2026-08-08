@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { log } from "./log.js";
+import { log } from "../log.js";
 
 const CEF_PORT = 8080;
 const CEF_HOST = "127.0.0.1";

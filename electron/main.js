@@ -9,11 +9,12 @@ import {
   removeAccount,
   setSettings,
 } from "./store.js";
-import { cancelLogin, CancelledError, loginToSteam } from "./src/lib/steam.js";
+import { cancelLogin, loginToSteam } from "./steam/index.js";
+import { CancelledError } from "./errors.js";
 import { log, openLog } from "./log.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-const isDevelopment = !app.isPackaged;
+const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
 const createWindow = async () => {
   const settings = getSettings();
@@ -31,12 +32,12 @@ const createWindow = async () => {
     win.maximize();
   }
 
-  if (isDevelopment) {
-    await win.loadURL("http://127.0.0.1:5173");
+  if (devServerUrl) {
+    await win.loadURL(devServerUrl);
     return;
   }
 
-  await win.loadFile(path.join(dirname, "dist", "index.html"));
+  await win.loadFile(path.join(dirname, "..", "dist", "index.html"));
 };
 
 Menu.setApplicationMenu(null);

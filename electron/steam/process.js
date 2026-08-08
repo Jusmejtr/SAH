@@ -1,3 +1,14 @@
+import fs from "node:fs";
+import path from "node:path";
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
+import { log } from "../log.js";
+import { throwIfCancelled } from "../errors.js";
+
+const execFileAsync = promisify(execFile);
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const isWindows = process.platform === "win32";
 export const isMac = process.platform === "darwin";
 
