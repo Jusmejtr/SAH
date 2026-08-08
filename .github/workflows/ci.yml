@@ -26,4 +26,4 @@ jobs:
         run: npm run build
 
       - name: Check main process syntax
-        run: node --check main.js && node --check store.js && node --check preload.cjs
+        run: node --check electron/main.js && node --check electron/store.js && node --check electron/preload.cjs
