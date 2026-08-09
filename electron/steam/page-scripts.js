@@ -18,7 +18,7 @@ window.__sah = (() => {
   const setValue = (el, value) => {
     const proto = Object.getPrototypeOf(el);
     const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
-    el.focus();
+    el.focus({ preventScroll: true });
     if (setter) setter.call(el, value);
     else el.value = value;
     el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -51,10 +51,20 @@ window.__sah = (() => {
     );
   };
 
+  const ensureInView = (el) => {
+    const rect = el.getBoundingClientRect();
+    const inView =
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+    if (!inView) el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    return el.getBoundingClientRect();
+  };
+
   // React ignores a bare .click() on some tiles, so the full pointer sequence is replayed.
   const fireClick = (el) => {
-    el.scrollIntoView({ block: "center" });
-    const rect = el.getBoundingClientRect();
+    const rect = ensureInView(el);
     const base = {
       bubbles: true,
       cancelable: true,
@@ -74,7 +84,7 @@ window.__sah = (() => {
     el.dispatchEvent(new MouseEvent("mousemove", { ...base, buttons: 0 }));
     el.dispatchEvent(new Pointer("pointerdown", { ...base, buttons: 1 }));
     el.dispatchEvent(new MouseEvent("mousedown", { ...base, buttons: 1 }));
-    if (typeof el.focus === "function") el.focus();
+    if (typeof el.focus === "function") el.focus({ preventScroll: true });
     el.dispatchEvent(new Pointer("pointerup", { ...base, buttons: 0 }));
     el.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0 }));
     el.dispatchEvent(new MouseEvent("click", { ...base, buttons: 0 }));
@@ -160,8 +170,7 @@ window.__sah = (() => {
       const regex = new RegExp(pattern, "i");
       const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
       if (!leaf) return null;
-      leaf.scrollIntoView({ block: "center" });
-      const rect = leaf.getBoundingClientRect();
+      const rect = ensureInView(leaf);
       if (rect.width === 0 || rect.height === 0) return null;
       return {
         x: Math.round(rect.left + rect.width / 2),
