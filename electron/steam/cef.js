@@ -114,19 +114,27 @@ export const findPage = async (probe, timeoutMs, isCancelled = () => false) => {
       continue;
     }
 
-    const pages = targets.filter((target) => target.type === "page");
-    const snapshot = pages.map((page) => page.title).join(" | ");
+    const pages = targets.filter(
+      (target) =>
+        Boolean(target.webSocketDebuggerUrl) &&
+        target.type !== "other" &&
+        !/sharedjscontext/i.test(target.title ?? ""),
+    );
+    const snapshot = pages
+      .map((page) => `${page.type}:${page.title}`)
+      .join(" | ");
     if (snapshot !== announced) {
       announced = snapshot;
       log("cef: targets:", snapshot || "(none)");
     }
 
     for (const page of pages) {
-      if (!page.webSocketDebuggerUrl) continue;
       let session;
       try {
         session = await connect(page.webSocketDebuggerUrl);
-        if (await session.evaluate(probe)) {
+        const matched = await session.evaluate(probe);
+        log("cef: probe", page.title, "->", matched);
+        if (matched) {
           log("cef: matched page", page.title, page.url);
           return session;
         }

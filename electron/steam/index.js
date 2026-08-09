@@ -137,6 +137,8 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
       inputs: page.inputs,
       buttons: page.buttons.map((button) => button.text),
       texts: page.texts,
+      tiles: page.tiles,
+      classTokens: page.classTokens,
     });
     if (summary !== lastSummary) {
       lastSummary = summary;
@@ -158,7 +160,10 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
         if (await clickTile(tiles, wanted)) break;
         if (nameRegex && (await click(names.join("|")))) break;
 
-        const addTile = tiles.find((tile) => !tile.hasAvatar && tile.text);
+        // The "add an account" tile is the only entry with no avatar; it often shows just a "+".
+        const addTile = tiles.find(
+          (tile) => !tile.hasAvatar && tile.width >= 24 && tile.height >= 24,
+        );
         if (await clickTile(tiles, addTile)) break;
         if (await click(ADD_ACCOUNT_WORDS)) break;
         return "manual";

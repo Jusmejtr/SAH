@@ -54,10 +54,18 @@ window.__sah = (() => {
     return Array.from(tokens);
   };
 
-  const avatarImages = () =>
-    Array.from(document.querySelectorAll("img")).filter(
-      (img) => isVisible(img) && /avatar|steamcommunity|steamstatic/i.test(img.src || ""),
+  const isAvatarUrl = (value) => /avatar|steamcommunity|steamstatic/i.test(value || "");
+
+  // Some picker skins paint the avatar as a CSS background instead of an <img>.
+  const avatarImages = () => {
+    const images = Array.from(document.querySelectorAll("img")).filter(
+      (img) => isVisible(img) && isAvatarUrl(img.src),
     );
+    if (images.length > 0) return images;
+    return Array.from(document.querySelectorAll("div, span")).filter(
+      (el) => isVisible(el) && isAvatarUrl(getComputedStyle(el).backgroundImage),
+    );
+  };
 
   let tileElements = [];
 
@@ -95,6 +103,8 @@ window.__sah = (() => {
       return {
         text: (el.innerText || "").trim().slice(0, 80),
         hasAvatar: avatars.some((img) => el.contains(img)),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
         x: Math.round(rect.left + rect.width / 2),
         y: Math.round(rect.top + rect.height / 2),
       };
@@ -321,11 +331,13 @@ export const PROBE = `
   const text = document.body ? document.body.innerText : "";
   const codeBoxes = document.querySelectorAll('input[maxlength="1"]');
   const dialog = document.querySelector(
-    '[class*="newlogindialog" i], [class*="loginform" i], [class*="signin" i]',
+    '[class*="login" i], [class*="signin" i], [class*="sign_in" i], [class*="authentic" i]',
   );
+  const avatars = document.querySelectorAll('img[src*="avatar" i]');
   return Boolean(document.querySelector('input[type="password"]')) ||
     codeBoxes.length >= 4 ||
     Boolean(dialog) ||
+    avatars.length > 0 ||
     /sign in to steam|steam guard|mobile authenticator|enter the code|who's playing|whos playing/i.test(text);
 })()
 `;
