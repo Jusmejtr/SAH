@@ -142,7 +142,7 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
       case "mobile-confirm": {
         onProgress("Switching to Steam Guard code");
         const switched = await click(
-          "enter a code|use a code|code instead|steam guard code|enter code",
+          "Enter a code instead",
         );
         log("drive: switched to code entry", switched);
         if (!switched) return "manual";
