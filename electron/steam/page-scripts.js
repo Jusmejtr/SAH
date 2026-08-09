@@ -40,6 +40,67 @@ window.__sah = (() => {
       (el) => el.children.length === 0 && isVisible(el),
     );
 
+  // CSS-module class names carry a hashed suffix (newlogindialog_SignInButton_1ku5B);
+  // stripping it leaves a stable, language independent hint about the current screen.
+  const classTokens = () => {
+    const tokens = new Set();
+    document.querySelectorAll("[class]").forEach((el) => {
+      const raw =
+        typeof el.className === "string" ? el.className : el.className.baseVal || "";
+      raw.split(/\\s+/).forEach((token) => {
+        if (token) tokens.add(token.replace(/_[A-Za-z0-9-]{4,}$/, ""));
+      });
+    });
+    return Array.from(tokens);
+  };
+
+  const avatarImages = () =>
+    Array.from(document.querySelectorAll("img")).filter(
+      (img) => isVisible(img) && /avatar|steamcommunity|steamstatic/i.test(img.src || ""),
+    );
+
+  let tileElements = [];
+
+  /**
+   * Account picker entries, found by their avatar image instead of the screen's wording.
+   * Sibling entries without an avatar are the "add an account" style tiles.
+   */
+  const accountTiles = () => {
+    const avatars = avatarImages();
+    tileElements = [];
+    if (avatars.length === 0) return [];
+
+    const owners = new Set();
+    avatars.forEach((img) => {
+      let node = img.parentElement;
+      for (let depth = 0; node && depth < 4; depth += 1) {
+        if ((node.innerText || "").trim()) break;
+        node = node.parentElement;
+      }
+      if (node) owners.add(node);
+    });
+
+    const siblings = new Set();
+    owners.forEach((owner) => {
+      const parent = owner.parentElement;
+      if (!parent) return;
+      Array.from(parent.children).forEach((child) => {
+        if (isVisible(child)) siblings.add(child);
+      });
+    });
+
+    tileElements = Array.from(siblings.size ? siblings : owners);
+    return tileElements.map((el) => {
+      const rect = el.getBoundingClientRect();
+      return {
+        text: (el.innerText || "").trim().slice(0, 80),
+        hasAvatar: avatars.some((img) => el.contains(img)),
+        x: Math.round(rect.left + rect.width / 2),
+        y: Math.round(rect.top + rect.height / 2),
+      };
+    });
+  };
+
   const resolveText = (pattern) => {
     const regex = new RegExp(pattern, "i");
     const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
@@ -116,7 +177,76 @@ window.__sah = (() => {
               .filter((text) => text && text.length <= 60),
           ),
         ),
+        tiles: accountTiles(),
+        classTokens: classTokens().filter((token) =>
+          /login|signin|sign_in|account|guard|qr|code|confirm/i.test(token),
+        ),
       };
+    },
+
+    /** Clicks an account picker tile by the index reported in describe().tiles. */
+    clickTile(index) {
+      const target = tileElements[index];
+      if (!target) return false;
+      fireClick(target);
+      return true;
+    },
+
+    /** Submits the current form without relying on the button's wording. */
+    submit() {
+      const selectors = [
+        'button[type="submit"]',
+        '[class*="SubmitButton" i]',
+        '[class*="SignInButton" i]',
+        "form button",
+      ];
+      for (const selector of selectors) {
+        const target = Array.from(document.querySelectorAll(selector)).find(
+          (el) => isVisible(el) && !el.disabled,
+        );
+        if (target) {
+          fireClick(target);
+          return true;
+        }
+      }
+
+      const field = inputs().find((el) => el.type === "password") ?? inputs().at(-1);
+      if (!field) return false;
+      field.focus({ preventScroll: true });
+      ["keydown", "keypress", "keyup"].forEach((type) =>
+        field.dispatchEvent(
+          new KeyboardEvent(type, {
+            key: "Enter",
+            code: "Enter",
+            keyCode: 13,
+            which: 13,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+      );
+      field.closest("form")?.requestSubmit?.();
+      return true;
+    },
+
+    /**
+     * Clicks the secondary link of a screen (e.g. "enter a code instead") by structure:
+     * a visible link-like control that is not the primary submit button.
+     */
+    clickSecondary() {
+      const target = Array.from(
+        document.querySelectorAll('a, [class*="link" i], [role="link"]'),
+      ).find(
+        (el) =>
+          isVisible(el) &&
+          !el.disabled &&
+          (el.innerText || "").trim().length > 0 &&
+          el.getAttribute("type") !== "submit" &&
+          !/submitbutton|signinbutton/i.test(el.className?.toString?.() ?? ""),
+      );
+      if (!target) return false;
+      fireClick(target);
+      return true;
     },
 
     fillCredentials(username, password) {
@@ -182,11 +312,20 @@ window.__sah = (() => {
 true;
 `;
 
-/** True when the page looks like Steam's sign-in flow. */
+/**
+ * True when the page looks like Steam's sign-in flow. Structural checks come first so the
+ * probe also works when the client runs in a language other than English.
+ */
 export const PROBE = `
 (() => {
   const text = document.body ? document.body.innerText : "";
+  const codeBoxes = document.querySelectorAll('input[maxlength="1"]');
+  const dialog = document.querySelector(
+    '[class*="newlogindialog" i], [class*="loginform" i], [class*="signin" i]',
+  );
   return Boolean(document.querySelector('input[type="password"]')) ||
+    codeBoxes.length >= 4 ||
+    Boolean(dialog) ||
     /sign in to steam|steam guard|mobile authenticator|enter the code|who's playing|whos playing/i.test(text);
 })()
 `;
