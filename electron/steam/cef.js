@@ -60,6 +60,27 @@ class CefSession {
     return result.result.value;
   }
 
+  /** Sends a real (trusted) mouse click at viewport coordinates. */
+  async clickPoint(x, y) {
+    const base = { x, y, button: "left", clickCount: 1 };
+    await this.send("Input.dispatchMouseEvent", {
+      ...base,
+      type: "mouseMoved",
+      button: "none",
+      buttons: 0,
+    });
+    await this.send("Input.dispatchMouseEvent", {
+      ...base,
+      type: "mousePressed",
+      buttons: 1,
+    });
+    await this.send("Input.dispatchMouseEvent", {
+      ...base,
+      type: "mouseReleased",
+      buttons: 0,
+    });
+  }
+
   close() {
     this.socket.close();
   }

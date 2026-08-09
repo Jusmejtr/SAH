@@ -40,14 +40,44 @@ window.__sah = (() => {
       (el) => el.children.length === 0 && isVisible(el),
     );
 
+  const resolveText = (pattern) => {
+    const regex = new RegExp(pattern, "i");
+    const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
+    if (!leaf) return null;
+    return (
+      leaf.closest('button, a, [role="button"], [tabindex], [onclick]') ??
+      leaf.parentElement ??
+      leaf
+    );
+  };
+
   // React ignores a bare .click() on some tiles, so the full pointer sequence is replayed.
   const fireClick = (el) => {
     el.scrollIntoView({ block: "center" });
-    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
-      el.dispatchEvent(
-        new MouseEvent(type, { bubbles: true, cancelable: true, view: window }),
-      );
-    }
+    const rect = el.getBoundingClientRect();
+    const base = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      button: 0,
+      detail: 1,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+    };
+    const Pointer = window.PointerEvent ?? MouseEvent;
+    el.dispatchEvent(new Pointer("pointerover", { ...base, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("mouseover", { ...base, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("mousemove", { ...base, buttons: 0 }));
+    el.dispatchEvent(new Pointer("pointerdown", { ...base, buttons: 1 }));
+    el.dispatchEvent(new MouseEvent("mousedown", { ...base, buttons: 1 }));
+    if (typeof el.focus === "function") el.focus();
+    el.dispatchEvent(new Pointer("pointerup", { ...base, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("click", { ...base, buttons: 0 }));
   };
 
   return {
@@ -116,16 +146,27 @@ window.__sah = (() => {
 
     /** Clicks anything showing the given text, including plain tiles without a role. */
     clickText(pattern) {
-      const regex = new RegExp(pattern, "i");
-      const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
-      if (!leaf) return false;
-
-      const target =
-        leaf.closest('button, a, [role="button"], [tabindex], [onclick]') ??
-        leaf.parentElement ??
-        leaf;
+      const target = resolveText(pattern);
+      if (!target) return false;
       fireClick(target);
       return true;
+    },
+
+    /**
+     * Returns viewport coordinates for the element showing the given text so the caller
+     * can dispatch a real (trusted) mouse click through CDP.
+     */
+    locateText(pattern) {
+      const regex = new RegExp(pattern, "i");
+      const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
+      if (!leaf) return null;
+      leaf.scrollIntoView({ block: "center" });
+      const rect = leaf.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+      return {
+        x: Math.round(rect.left + rect.width / 2),
+        y: Math.round(rect.top + rect.height / 2),
+      };
     },
   };
 })();

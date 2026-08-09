@@ -82,8 +82,20 @@ export const detectScreen = (page, credentialsSent) => {
 const driveSignIn = async (session, job, onProgress, credentials) => {
   const { username, displayName, password, sharedSecret } = credentials;
   const deadline = Date.now() + SIGN_IN_TIMEOUT_MS;
-  const click = (pattern) =>
-    session.evaluate(`window.__sah.clickText(${quote(pattern)})`);
+
+  // Steam's login page ignores synthetic events on some tiles, so a real CDP mouse click
+  // at the element's coordinates is tried first.
+  const click = async (pattern) => {
+    const point = await session.evaluate(
+      `window.__sah.locateText(${quote(pattern)})`,
+    );
+    if (point) {
+      await delay(120);
+      await session.clickPoint(point.x, point.y);
+      return true;
+    }
+    return session.evaluate(`window.__sah.clickText(${quote(pattern)})`);
+  };
 
   let credentialsSent = false;
   let lastSummary = "";
@@ -142,7 +154,7 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
       case "mobile-confirm": {
         onProgress("Switching to Steam Guard code");
         const switched = await click(
-          "Enter a code instead",
+          "enter a code instead|use a code instead|zadat k.d",
         );
         log("drive: switched to code entry", switched);
         if (!switched) return "manual";
