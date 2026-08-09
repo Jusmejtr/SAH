@@ -111,6 +111,37 @@ window.__sah = (() => {
     });
   };
 
+  let pointerElements = [];
+
+  // A computed cursor of "pointer" marks Steam's link-style controls regardless of wording.
+  const pointerTargets = () => {
+    const seen = new Set();
+    pointerElements = Array.from(document.querySelectorAll("body *")).filter((el) => {
+      if (!isVisible(el) || el.disabled) return false;
+      if (getComputedStyle(el).cursor !== "pointer") return false;
+      const text = (el.innerText || "").trim();
+      if (!text || text.length > 60 || seen.has(text)) return false;
+      if (
+        Array.from(el.children).some(
+          (child) => (child.innerText || "").trim() === text,
+        )
+      ) {
+        return false;
+      }
+      seen.add(text);
+      return true;
+    });
+
+    return pointerElements.map((el) => {
+      const rect = el.getBoundingClientRect();
+      return {
+        text: (el.innerText || "").trim().slice(0, 60),
+        x: Math.round(rect.left + rect.width / 2),
+        y: Math.round(rect.top + rect.height / 2),
+      };
+    });
+  };
+
   const resolveText = (pattern) => {
     const regex = new RegExp(pattern, "i");
     const leaf = leaves().find((el) => regex.test((el.innerText || "").trim()));
@@ -188,6 +219,7 @@ window.__sah = (() => {
           ),
         ),
         tiles: accountTiles(),
+        links: pointerTargets(),
         classTokens: classTokens().filter((token) =>
           /login|signin|sign_in|account|guard|qr|code|confirm/i.test(token),
         ),
@@ -197,6 +229,14 @@ window.__sah = (() => {
     /** Clicks an account picker tile by the index reported in describe().tiles. */
     clickTile(index) {
       const target = tileElements[index];
+      if (!target) return false;
+      fireClick(target);
+      return true;
+    },
+
+    /** Clicks a control by the index reported in describe().links. */
+    clickLink(index) {
+      const target = pointerElements[index];
       if (!target) return false;
       fireClick(target);
       return true;
@@ -236,26 +276,6 @@ window.__sah = (() => {
         ),
       );
       field.closest("form")?.requestSubmit?.();
-      return true;
-    },
-
-    /**
-     * Clicks the secondary link of a screen (e.g. "enter a code instead") by structure:
-     * a visible link-like control that is not the primary submit button.
-     */
-    clickSecondary() {
-      const target = Array.from(
-        document.querySelectorAll('a, [class*="link" i], [role="link"]'),
-      ).find(
-        (el) =>
-          isVisible(el) &&
-          !el.disabled &&
-          (el.innerText || "").trim().length > 0 &&
-          el.getAttribute("type") !== "submit" &&
-          !/submitbutton|signinbutton/i.test(el.className?.toString?.() ?? ""),
-      );
-      if (!target) return false;
-      fireClick(target);
       return true;
     },
 
@@ -326,9 +346,12 @@ true;
  * True when the page looks like Steam's sign-in flow. Structural checks come first so the
  * probe also works when the client runs in a language other than English.
  */
+/**
+ * True when the page looks like Steam's sign-in flow. The checks are structural only, so
+ * the probe works in any client language.
+ */
 export const PROBE = `
 (() => {
-  const text = document.body ? document.body.innerText : "";
   const codeBoxes = document.querySelectorAll('input[maxlength="1"]');
   const dialog = document.querySelector(
     '[class*="login" i], [class*="signin" i], [class*="sign_in" i], [class*="authentic" i]',
@@ -337,7 +360,6 @@ export const PROBE = `
   return Boolean(document.querySelector('input[type="password"]')) ||
     codeBoxes.length >= 4 ||
     Boolean(dialog) ||
-    avatars.length > 0 ||
-    /sign in to steam|steam guard|mobile authenticator|enter the code|who's playing|whos playing/i.test(text);
+    avatars.length > 0;
 })()
 `;

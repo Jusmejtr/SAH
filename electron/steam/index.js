@@ -51,43 +51,33 @@ const quote = (value) => JSON.stringify(String(value));
 const escapeRegex = (value) =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Text patterns are only a fallback for screens the structural checks cannot classify,
-// so the common Steam client languages are listed here.
-const MOBILE_WORDS =
-  "mobile app|steam app|approve|use your phone|mobiln|schv[aá]lit|best[aä]tig|mobile-app|aprobar|aplicaci[oó]n m[oó]vil|approuver|application mobile|approva|app mobile|aprovar|aplicativo|zatwierd[zź]|aplikacja mobilna|подтверд|мобильн|підтверд|onayla|mobil uygulama|goedkeur|mobiele app|godk[aä]nn|手机|手機|モバイル|承認|모바일|승인";
-const USE_CODE_WORDS =
-  "enter a code|use a code|code instead|zadat k[oó]d|pou[zž][ií]t k[oó]d|code eingeben|stattdessen einen code|introducir un c[oó]digo|usar un c[oó]digo|saisir un code|utiliser un code|inserisci un codice|introduzir um c[oó]digo|inserir c[oó]digo|wpisz kod|u[zż]yj kodu|ввести код|использовать код|ввести код|kod gir|code invoeren|ange kod|输入验证码|改用验证码|輸入驗證碼|コードを入力|코드 입력";
-const ADD_ACCOUNT_WORDS =
-  "add an account|add account|different account|sign in with|jin[yý] [uú][cč]et|p[rř]idat [uú][cč]et|konto hinzuf[uü]gen|anderes konto|a[nñ]adir cuenta|otra cuenta|ajouter un compte|autre compte|aggiungi account|altro account|adicionar conta|outra conta|dodaj konto|inne konto|добавить аккаунт|другой аккаунт|hesap ekle|account toevoegen|l[aä]gg till konto|添加账户|新增帳戶|アカウントを追加|계정 추가";
-
 /**
- * Classifies the current sign-in screen from its DOM. Detection is structural (input
- * types, code boxes, avatar tiles, CSS-module class names) so it does not depend on the
- * client's language; wording is only consulted as a last resort.
+ * Classifies the current sign-in screen from its DOM. Detection is purely structural
+ * (input types, code boxes, avatar tiles, CSS-module class names), so it works in any
+ * client language.
  */
 export const detectScreen = (page, credentialsSent) => {
-  const text = page.text ?? "";
   const tokens = (page.classTokens ?? []).join(" ");
   const tiles = page.tiles ?? [];
+  const links = page.links ?? [];
   const codeBoxes = page.inputs.filter(
     (input) => input.type !== "password" && input.maxLength === 1,
   );
 
   if (page.inputs.some((input) => input.type === "password"))
     return "credentials";
-  if (codeBoxes.length >= 4) return "guard-code";
-  if (tiles.some((tile) => tile.hasAvatar) || /accountlist|loginusers|whosplaying/i.test(tokens))
-    return "account-picker";
-  if (
-    /awaitingmobile|mobileconf|qrcode/i.test(tokens) ||
-    new RegExp(MOBILE_WORDS, "i").test(text)
-  ) {
-    return "mobile-confirm";
-  }
-  if (codeBoxes.length > 0 || /guardcode|entercode/i.test(tokens)) {
+  if (codeBoxes.length > 0 || /guardcode|entercode/i.test(tokens))
     return "guard-code";
+  if (
+    tiles.some((tile) => tile.hasAvatar) ||
+    /accountlist|loginusers|whosplaying/i.test(tokens)
+  ) {
+    return "account-picker";
   }
-  if (credentialsSent && page.inputs.length === 0) return "signed-in";
+  if (/awaitingmobile|mobileconf|qrcode/i.test(tokens)) return "mobile-confirm";
+  if (credentialsSent && page.inputs.length === 0) {
+    return links.length > 0 ? "mobile-confirm" : "signed-in";
+  }
   return "unknown";
 };
 
@@ -119,6 +109,15 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
     return session.evaluate(`window.__sah.clickTile(${tiles.indexOf(tile)})`);
   };
 
+  const clickLink = async (links, link) => {
+    if (!link) return false;
+    if (link.x > 0 && link.y > 0) {
+      await session.clickPoint(link.x, link.y);
+      return true;
+    }
+    return session.evaluate(`window.__sah.clickLink(${links.indexOf(link)})`);
+  };
+
   let credentialsSent = false;
   let lastSummary = "";
 
@@ -138,6 +137,7 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
       buttons: page.buttons.map((button) => button.text),
       texts: page.texts,
       tiles: page.tiles,
+      links: page.links,
       classTokens: page.classTokens,
     });
     if (summary !== lastSummary) {
@@ -165,7 +165,6 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
           (tile) => !tile.hasAvatar && tile.width >= 24 && tile.height >= 24,
         );
         if (await clickTile(tiles, addTile)) break;
-        if (await click(ADD_ACCOUNT_WORDS)) break;
         return "manual";
       }
 
@@ -182,10 +181,9 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
 
       case "mobile-confirm": {
         onProgress("Switching to Steam Guard code");
-        const switched =
-          (await click(USE_CODE_WORDS)) ||
-          (await session.evaluate("window.__sah.clickSecondary()"));
-        log("drive: switched to code entry", switched);
+        const links = page.links ?? [];
+        const switched = await clickLink(links, links[0]);
+        log("drive: switched to code entry", switched, JSON.stringify(links));
         if (!switched) return "manual";
         break;
       }
