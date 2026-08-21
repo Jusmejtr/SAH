@@ -177,14 +177,14 @@ export const getSecrets = (id) => {
 };
 
 export const getSettings = () => ({
-  width: Number(readSettingsRaw().width ?? 800),
+  width: Number(readSettingsRaw().width ?? 900),
   height: Number(readSettingsRaw().height ?? 600),
   maximize: Boolean(readSettingsRaw().maximize),
 });
 
 export const setSettings = (settings) => {
   const nextSettings = {
-    width: Number(settings.width ?? 800),
+    width: Number(settings.width ?? 900),
     height: Number(settings.height ?? 600),
     maximize: Boolean(settings.maximize),
   };
