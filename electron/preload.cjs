@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("sah", {
   listAccounts: () => ipcRenderer.invoke("accounts:list"),
   addAccount: (account) => ipcRenderer.invoke("accounts:add", account),
   removeAccount: (id) => ipcRenderer.invoke("accounts:remove", id),
+  exportAccounts: (options) => ipcRenderer.invoke("accounts:export", options),
   loginAccount: (id) => ipcRenderer.invoke("accounts:login", id),
   cancelLogin: () => ipcRenderer.invoke("accounts:login-cancel"),
   openLog: () => ipcRenderer.invoke("debug:open-log"),

@@ -21,10 +21,28 @@ export type LoginResult = {
   status: "signed-in" | "auto-login" | "launched" | "code-copied" | "cancelled";
 };
 
+export type ExportLayout =
+  | "username,password,sharedSecret"
+  | "password,username,sharedSecret"
+  | "username,password,sharedSecret,displayName"
+  | "password,username,sharedSecret,displayName";
+
+export type ExportOptions = {
+  delimiter: string;
+  layout: ExportLayout;
+};
+
+export type ExportResult = {
+  cancelled: boolean;
+  filePath: string;
+  count: number;
+};
+
 type SahApi = {
   listAccounts: () => Promise<Account[]>;
   addAccount: (account: NewAccount) => Promise<Account>;
   removeAccount: (id: string) => Promise<Account[]>;
+  exportAccounts: (options: ExportOptions) => Promise<ExportResult>;
   loginAccount: (id: string) => Promise<LoginResult>;
   cancelLogin: () => Promise<boolean>;
   openLog: () => Promise<string>;
@@ -49,6 +67,8 @@ const getApi = (): SahApi => {
 export const listAccounts = () => getApi().listAccounts();
 export const addAccount = (account: NewAccount) => getApi().addAccount(account);
 export const removeAccount = (id: string) => getApi().removeAccount(id);
+export const exportAccounts = (options: ExportOptions) =>
+  getApi().exportAccounts(options);
 export const loginAccount = (id: string) => getApi().loginAccount(id);
 export const cancelLogin = () => getApi().cancelLogin();
 export const openLog = () => getApi().openLog();

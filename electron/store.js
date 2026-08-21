@@ -53,6 +53,26 @@ const encrypt = (value) =>
 const decrypt = (value) =>
   safeStorage.decryptString(Buffer.from(String(value), "base64"));
 
+const SUPPORTED_EXPORT_LAYOUTS = new Set([
+  "username,password,sharedSecret",
+  "password,username,sharedSecret",
+  "username,password,sharedSecret,displayName",
+  "password,username,sharedSecret,displayName",
+]);
+
+const escapeValue = (value, delimiter) => {
+  const raw = String(value ?? "");
+  if (
+    raw.includes(delimiter) ||
+    raw.includes('"') ||
+    raw.includes("\n") ||
+    raw.includes("\r")
+  ) {
+    return `"${raw.replaceAll('"', '""')}"`;
+  }
+  return raw;
+};
+
 const toPublic = (account) => ({
   id: account.id,
   username: account.username,
@@ -102,6 +122,46 @@ export const removeAccount = (id) => {
   const next = accounts.filter((account) => account.id !== id);
   writeRaw(next);
   return next.map(toPublic);
+};
+
+export const exportAccounts = ({ delimiter, layout }) => {
+  assertEncryptionAvailable();
+
+  const finalDelimiter = String(delimiter ?? "");
+  const finalLayout = String(layout ?? "");
+
+  if (!finalDelimiter) {
+    throw new Error("Delimiter is required for export.");
+  }
+
+  if (!SUPPORTED_EXPORT_LAYOUTS.has(finalLayout)) {
+    throw new Error("Invalid export column order.");
+  }
+
+  const columns = finalLayout.split(",");
+  const rows = readRaw();
+
+  if (rows.length === 0) {
+    throw new Error("No accounts available to export.");
+  }
+
+  const lines = rows.map((account) => {
+    const record = {
+      username: account.username,
+      password: decrypt(account.password),
+      sharedSecret: decrypt(account.sharedSecret),
+      displayName: account.displayName ?? "",
+    };
+
+    return columns
+      .map((column) => escapeValue(record[column] ?? "", finalDelimiter))
+      .join(finalDelimiter);
+  });
+
+  return {
+    content: lines.join("\n"),
+    count: lines.length,
+  };
 };
 
 export const getSecrets = (id) => {

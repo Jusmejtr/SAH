@@ -7,18 +7,20 @@ import Footer from "./components/Footer";
 import {
   addAccount,
   cancelLogin,
+  exportAccounts,
   listAccounts,
   loginAccount,
   onLoginProgress,
   openLog,
   removeAccount,
 } from "./api";
-import type { Account, NewAccount } from "./api";
+import type { Account, ExportOptions, NewAccount } from "./api";
 
 const LOGIN_MESSAGES = {
   "signed-in": "Credentials and Steam Guard code submitted.",
   "auto-login": "Steam resumed the saved session for this account.",
-  launched: "Credentials submitted. No shared secret stored, enter the code manually.",
+  launched:
+    "Credentials submitted. No shared secret stored, enter the code manually.",
   "code-copied": "Steam started. Guard code copied to the clipboard.",
   cancelled: "Login cancelled.",
 } as const;
@@ -90,6 +92,11 @@ export function App() {
     }
   };
 
+  const handleExport = async (options: ExportOptions) => {
+    const result = await exportAccounts(options);
+    return result;
+  };
+
   const handleToggleManage = () => {
     setManageMode((prev) => !prev);
     setSelectedIds([]);
@@ -156,6 +163,7 @@ export function App() {
       <Nav
         onAdd={handleAdd}
         onImport={handleImport}
+        onExport={handleExport}
         manageMode={manageMode}
         onToggleManage={handleToggleManage}
         selectedCount={selectedIds.length}

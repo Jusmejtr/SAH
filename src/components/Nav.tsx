@@ -3,13 +3,15 @@ import { FaCog } from "react-icons/fa";
 import { useState } from "preact/hooks";
 import AddDialog from "./manage-account/AddDialog";
 import ImportDialog from "./manage-account/ImportDialog";
+import ExportDialog from "./manage-account/ExportDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import SettingsDialog from "./SettingsDialog";
-import type { NewAccount } from "../api";
+import type { ExportOptions, ExportResult, NewAccount } from "../api";
 
 type NavProps = {
   onAdd: (account: NewAccount) => Promise<void>;
   onImport: (accounts: NewAccount[]) => Promise<void>;
+  onExport: (options: ExportOptions) => Promise<ExportResult>;
   manageMode: boolean;
   onToggleManage: () => void;
   selectedCount: number;
@@ -21,6 +23,7 @@ type NavProps = {
 export default function Nav({
   onAdd,
   onImport,
+  onExport,
   manageMode,
   onToggleManage,
   selectedCount,
@@ -51,6 +54,7 @@ export default function Nav({
       >
         <AddDialog onAdd={onAdd} />
         <ImportDialog onImport={onImport} />
+        <ExportDialog onExport={onExport} />
         <Button
           variant={manageMode ? "contained" : "outlined"}
           onClick={onToggleManage}

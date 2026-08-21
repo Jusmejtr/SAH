@@ -1,8 +1,10 @@
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, Menu, ipcMain } from "electron";
+import { app, BrowserWindow, Menu, dialog, ipcMain } from "electron";
 import {
   addAccount,
+  exportAccounts,
   getSecrets,
   getSettings,
   listAccounts,
@@ -46,6 +48,27 @@ app.whenReady().then(() => {
   ipcMain.handle("accounts:list", () => listAccounts());
   ipcMain.handle("accounts:add", (_event, account) => addAccount(account));
   ipcMain.handle("accounts:remove", (_event, id) => removeAccount(id));
+  ipcMain.handle("accounts:export", async (event, options) => {
+    const hostWindow = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(hostWindow ?? undefined, {
+      title: "Export Accounts",
+      defaultPath: "steam-accounts-export.txt",
+      filters: [{ name: "Text Files", extensions: ["txt"] }],
+    });
+
+    if (canceled || !filePath) {
+      return { cancelled: true, filePath: "", count: 0 };
+    }
+
+    const { content, count } = exportAccounts(options);
+    fs.writeFileSync(filePath, content, { encoding: "utf8", mode: 0o600 });
+
+    return {
+      cancelled: false,
+      filePath,
+      count,
+    };
+  });
   ipcMain.handle("accounts:login", async (event, id) => {
     const report = (step) => {
       if (step) log("step:", step);
