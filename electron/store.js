@@ -70,8 +70,10 @@ export const addAccount = ({
   assertEncryptionAvailable();
 
   const trimmedUsername = String(username ?? "").trim();
+  const trimmedSharedSecret = String(sharedSecret ?? "").trim();
   if (!trimmedUsername) throw new Error("Username is required.");
   if (!password) throw new Error("Password is required.");
+  if (!trimmedSharedSecret) throw new Error("Shared secret is required.");
 
   const accounts = readRaw();
   if (
@@ -87,7 +89,7 @@ export const addAccount = ({
     username: trimmedUsername,
     displayName: String(displayName ?? "").trim(),
     password: encrypt(password),
-    sharedSecret: sharedSecret ? encrypt(sharedSecret) : "",
+    sharedSecret: encrypt(trimmedSharedSecret),
   };
 
   accounts.push(account);

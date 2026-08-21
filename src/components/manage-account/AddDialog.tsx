@@ -93,6 +93,7 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                 type="password"
                 value={form.sharedSecret}
                 onChange={handleChange("sharedSecret")}
+                required
                 fullWidth
               />
               <TextField

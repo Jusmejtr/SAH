@@ -51,6 +51,45 @@ export function App() {
     setAccounts((prev) => [...prev, created]);
   };
 
+  const handleImport = async (items: NewAccount[]) => {
+    if (items.length === 0) {
+      throw new Error("No accounts to import.");
+    }
+
+    setError("");
+    setStatus("");
+
+    const created: Account[] = [];
+    const failures: string[] = [];
+
+    for (const account of items) {
+      try {
+        const next = await addAccount(account);
+        created.push(next);
+      } catch (err) {
+        failures.push((err as Error).message);
+      }
+    }
+
+    if (created.length > 0) {
+      setAccounts((prev) => [...prev, ...created]);
+      setStatus(`Imported ${created.length} account(s).`);
+    }
+
+    if (failures.length > 0) {
+      const firstFailure = failures[0];
+
+      if (created.length > 0) {
+        setError(
+          `Skipped ${failures.length} account(s) during import. First error: ${firstFailure}`,
+        );
+        return;
+      }
+
+      throw new Error(firstFailure);
+    }
+  };
+
   const handleToggleManage = () => {
     setManageMode((prev) => !prev);
     setSelectedIds([]);
@@ -116,6 +155,7 @@ export function App() {
     <Box sx={{ pb: 8 }}>
       <Nav
         onAdd={handleAdd}
+        onImport={handleImport}
         manageMode={manageMode}
         onToggleManage={handleToggleManage}
         selectedCount={selectedIds.length}

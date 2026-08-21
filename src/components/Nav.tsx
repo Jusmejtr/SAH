@@ -2,12 +2,14 @@ import { Button, Checkbox, FormControlLabel, IconButton, Stack } from "@mui/mate
 import { FaCog } from "react-icons/fa";
 import { useState } from "preact/hooks";
 import AddDialog from "./manage-account/AddDialog";
+import ImportDialog from "./manage-account/ImportDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import SettingsDialog from "./SettingsDialog";
 import type { NewAccount } from "../api";
 
 type NavProps = {
   onAdd: (account: NewAccount) => Promise<void>;
+  onImport: (accounts: NewAccount[]) => Promise<void>;
   manageMode: boolean;
   onToggleManage: () => void;
   selectedCount: number;
@@ -18,6 +20,7 @@ type NavProps = {
 
 export default function Nav({
   onAdd,
+  onImport,
   manageMode,
   onToggleManage,
   selectedCount,
@@ -47,6 +50,7 @@ export default function Nav({
         sx={{ alignItems: "center", flexWrap: "wrap" }}
       >
         <AddDialog onAdd={onAdd} />
+        <ImportDialog onImport={onImport} />
         <Button
           variant={manageMode ? "contained" : "outlined"}
           onClick={onToggleManage}
