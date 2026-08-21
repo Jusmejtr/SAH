@@ -47,6 +47,7 @@
       "package.json"
     ],
     "win": {
+      "artifactName": "Steam Account Helper-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "portable",
