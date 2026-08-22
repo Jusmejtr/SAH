@@ -152,6 +152,7 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
       case "account-picker": {
         onProgress("Choosing the account");
         const tiles = page.tiles ?? [];
+        const links = page.links ?? [];
         const names = [displayName, username].filter(Boolean).map(escapeRegex);
         const nameRegex = names.length ? new RegExp(names.join("|"), "i") : null;
         const wanted = tiles.find(
@@ -160,11 +161,8 @@ const driveSignIn = async (session, job, onProgress, credentials) => {
         if (await clickTile(tiles, wanted)) break;
         if (nameRegex && (await click(names.join("|")))) break;
 
-        // The "add an account" tile is the only entry with no avatar; it often shows just a "+".
-        const addTile = tiles.find(
-          (tile) => !tile.hasAvatar && tile.width >= 24 && tile.height >= 24,
-        );
-        if (await clickTile(tiles, addTile)) break;
+        // add an account
+        if (await clickLink(links, links[links.length - 1])) break;
         return "manual";
       }
 
