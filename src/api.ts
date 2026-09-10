@@ -38,6 +38,25 @@ export type ExportResult = {
   count: number;
 };
 
+export type UpdateState =
+  | "idle"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export type UpdateStatus = {
+  state: UpdateState;
+  currentVersion: string;
+  version: string;
+  percent: number;
+  canAutoInstall: boolean;
+  releaseUrl: string;
+  error: string;
+};
+
 type SahApi = {
   listAccounts: () => Promise<Account[]>;
   addAccount: (account: NewAccount) => Promise<Account>;
@@ -49,6 +68,12 @@ type SahApi = {
   onLoginProgress: (callback: (step: string) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
   setSettings: (settings: AppSettings) => Promise<AppSettings>;
+  getAppVersion: () => Promise<string>;
+  getUpdateStatus: () => Promise<UpdateStatus>;
+  checkForUpdates: () => Promise<UpdateStatus>;
+  installUpdate: () => Promise<boolean>;
+  openReleasePage: () => Promise<string>;
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 };
 
 declare global {
@@ -74,3 +99,10 @@ export const cancelLogin = () => getApi().cancelLogin();
 export const openLog = () => getApi().openLog();
 export const onLoginProgress = (callback: (step: string) => void) =>
   getApi().onLoginProgress(callback);
+export const getAppVersion = () => getApi().getAppVersion();
+export const getUpdateStatus = () => getApi().getUpdateStatus();
+export const checkForUpdates = () => getApi().checkForUpdates();
+export const installUpdate = () => getApi().installUpdate();
+export const openReleasePage = () => getApi().openReleasePage();
+export const onUpdateStatus = (callback: (status: UpdateStatus) => void) =>
+  getApi().onUpdateStatus(callback);

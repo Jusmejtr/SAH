@@ -14,6 +14,13 @@ import {
 import { cancelLogin, loginToSteam } from "./steam/index.js";
 import { CancelledError } from "./errors.js";
 import { log, openLog } from "./log.js";
+import {
+  checkForUpdates,
+  getUpdateStatus,
+  installUpdate,
+  openReleasePage,
+  startUpdateChecks,
+} from "./updater.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -88,8 +95,14 @@ app.whenReady().then(() => {
   ipcMain.handle("debug:open-log", () => openLog());
   ipcMain.handle("settings:get", () => getSettings());
   ipcMain.handle("settings:set", (_event, settings) => setSettings(settings));
+  ipcMain.handle("app:version", () => app.getVersion());
+  ipcMain.handle("update:status", () => getUpdateStatus());
+  ipcMain.handle("update:check", () => checkForUpdates());
+  ipcMain.handle("update:install", () => installUpdate());
+  ipcMain.handle("update:open-page", () => openReleasePage());
 
   createWindow();
+  startUpdateChecks();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

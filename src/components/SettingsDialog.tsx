@@ -2,10 +2,12 @@ import { useEffect, useState } from "preact/hooks";
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Stack,
   Switch,
   TextField,
@@ -13,7 +15,14 @@ import {
   alpha,
 } from "@mui/material";
 import { FaCog } from "react-icons/fa";
-import type { AppSettings } from "../api";
+import {
+  checkForUpdates,
+  getUpdateStatus,
+  installUpdate,
+  onUpdateStatus,
+  openReleasePage,
+} from "../api";
+import type { AppSettings, UpdateStatus } from "../api";
 
 type SettingsDialogProps = {
   open: boolean;
@@ -30,6 +39,12 @@ const initialSettings = (): SettingsState => ({
 
 export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const [settings, setSettings] = useState<SettingsState>(initialSettings);
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
+
+  useEffect(() => {
+    getUpdateStatus().then(setUpdate).catch(() => {});
+    return onUpdateStatus(setUpdate);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -127,6 +142,13 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               }}
             />
           </Stack>
+
+          <Divider />
+
+          <Typography variant="overline" color="text.secondary">
+            Updates
+          </Typography>
+          <UpdateSection status={update} />
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -138,5 +160,81 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+const UPDATE_LABELS: Record<UpdateStatus["state"], string> = {
+  idle: "",
+  checking: "Checking for updates…",
+  "up-to-date": "You are on the latest version.",
+  available: "A new version is available.",
+  downloading: "Downloading the update…",
+  downloaded: "Update downloaded and ready to install.",
+  error: "",
+};
+
+function UpdateSection({ status }: { status: UpdateStatus | null }) {
+  const state = status?.state ?? "idle";
+  const busy = state === "checking" || state === "downloading";
+
+  const detail =
+    state === "error"
+      ? status?.error || "Could not check for updates."
+      : state === "downloading"
+        ? `Downloading v${status?.version} — ${status?.percent ?? 0}%`
+        : state === "available" || state === "downloaded"
+          ? `${UPDATE_LABELS[state]} (v${status?.version})`
+          : UPDATE_LABELS[state];
+
+  return (
+    <Stack
+      direction="row"
+      spacing={2}
+      sx={(theme) => ({
+        alignItems: "center",
+        justifyContent: "space-between",
+        px: 2,
+        py: 1.25,
+        borderRadius: 3,
+        border: `1px solid ${theme.palette.divider}`,
+      })}
+    >
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Version {status?.currentVersion || "—"}
+        </Typography>
+        <Typography
+          variant="caption"
+          color={state === "error" ? "error.main" : "text.secondary"}
+        >
+          {detail || "Updates are checked automatically."}
+        </Typography>
+      </Box>
+
+      {state === "downloaded" ? (
+        <Button size="small" variant="contained" onClick={() => void installUpdate()}>
+          Restart &amp; install
+        </Button>
+      ) : state === "available" ? (
+        <Button
+          size="small"
+          variant="contained"
+          onClick={() => void openReleasePage()}
+        >
+          Download
+        </Button>
+      ) : (
+        <Button
+          size="small"
+          variant="outlined"
+          color="inherit"
+          disabled={busy}
+          onClick={() => void checkForUpdates()}
+          startIcon={busy ? <CircularProgress size={13} color="inherit" /> : undefined}
+        >
+          Check now
+        </Button>
+      )}
+    </Stack>
   );
 }

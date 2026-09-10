@@ -17,19 +17,27 @@ import { FaSearch, FaTimes, FaUserPlus } from "react-icons/fa";
 import Nav from "./components/Nav";
 import AccountCard from "./components/AccountCard";
 import Footer from "./components/Footer";
+import UpdateBanner from "./components/UpdateBanner";
 import { COLOR_MODE_KEY, createAppTheme } from "./theme";
 import type { ColorMode } from "./theme";
 import {
   addAccount,
   cancelLogin,
   exportAccounts,
+  getUpdateStatus,
   listAccounts,
   loginAccount,
   onLoginProgress,
+  onUpdateStatus,
   openLog,
   removeAccount,
 } from "./api";
-import type { Account, ExportOptions, NewAccount } from "./api";
+import type {
+  Account,
+  ExportOptions,
+  NewAccount,
+  UpdateStatus,
+} from "./api";
 
 const LOGIN_MESSAGES = {
   "signed-in": "Credentials and Steam Guard code submitted.",
@@ -58,6 +66,8 @@ export function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<ColorMode>(readInitialMode);
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState("");
 
   const theme = useMemo(() => createAppTheme(mode), [mode]);
 
@@ -67,6 +77,11 @@ export function App() {
   }, [mode]);
 
   useEffect(() => onLoginProgress(setStep), []);
+
+  useEffect(() => {
+    getUpdateStatus().then(setUpdate).catch(() => {});
+    return onUpdateStatus(setUpdate);
+  }, []);
 
   useEffect(() => {
     listAccounts()
@@ -221,6 +236,12 @@ export function App() {
           onToggleMode={() =>
             setMode((prev) => (prev === "dark" ? "light" : "dark"))
           }
+        />
+
+        <UpdateBanner
+          status={update}
+          dismissed={Boolean(update?.version) && updateDismissed === update?.version}
+          onDismiss={() => setUpdateDismissed(update?.version ?? "")}
         />
 
         <Container maxWidth="lg" sx={{ pt: 3 }}>
