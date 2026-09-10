@@ -1,22 +1,21 @@
 import { useMemo, useState } from "preact/hooks";
 import {
   Alert,
+  Box,
   Button,
-  Divider,
+  Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  List,
-  ListItem,
-  ListItemText,
   MenuItem,
-  Paper,
   Stack,
   TextField,
   Typography,
+  alpha,
 } from "@mui/material";
-import { FaFileImport } from "react-icons/fa";
+import { FaExclamationTriangle, FaFileImport, FaUpload } from "react-icons/fa";
 import type { NewAccount } from "../../api";
 
 type ImportDialogProps = {
@@ -233,30 +232,74 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
     <>
       <Button
         variant="outlined"
+        color="inherit"
         onClick={() => setOpen(true)}
-        startIcon={<FaFileImport />}
+        startIcon={<FaFileImport size={12} />}
       >
-        Import Accounts
+        Import
       </Button>
-      <Dialog open={open} onClose={close} fullWidth>
-        <DialogTitle>Import Accounts</DialogTitle>
+      <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Box
+              sx={(theme) => ({
+                width: 38,
+                height: 38,
+                borderRadius: 2,
+                display: "grid",
+                placeItems: "center",
+                color: theme.palette.primary.main,
+                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+              })}
+            >
+              <FaFileImport size={16} />
+            </Box>
+            <span>Import accounts</span>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
           <form id="import-accounts-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
               {error && <Alert severity="error">{error}</Alert>}
 
-              <Stack spacing={1}>
-                <Button variant="outlined" component="label">
-                  Select File
-                  <input type="file" hidden onChange={handleFileChange} />
-                </Button>
-                <Typography variant="body2" color="text.secondary">
-                  {fileName || "No file selected"}
+              <Box
+                component="label"
+                sx={(theme) => ({
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 0.75,
+                  py: 3,
+                  px: 2,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  borderRadius: 3,
+                  border: `1px dashed ${
+                    fileName
+                      ? alpha(theme.palette.primary.main, 0.6)
+                      : theme.palette.divider
+                  }`,
+                  backgroundColor: fileName
+                    ? alpha(theme.palette.primary.main, 0.06)
+                    : "transparent",
+                  transition: "border-color .2s ease, background-color .2s ease",
+                  "&:hover": {
+                    borderColor: alpha(theme.palette.primary.main, 0.6),
+                    backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                  },
+                })}
+              >
+                <input type="file" hidden onChange={handleFileChange} />
+                <Box sx={{ color: "primary.main", display: "flex" }}>
+                  <FaUpload size={20} />
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {fileName || "Choose a file"}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  One account per line.
+                  One account per line, separated by the delimiter below.
                 </Typography>
-              </Stack>
+              </Box>
 
               <TextField
                 select
@@ -305,72 +348,125 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
               </TextField>
 
               {previewRows.length > 0 && (
-                <Paper variant="outlined" sx={{ p: 1.5 }}>
-                  <Stack spacing={1}>
-                    <Typography variant="subtitle2">
-                      Preview ({previewRows.length} line(s))
-                    </Typography>
+                <Stack
+                  spacing={1.25}
+                  sx={(theme) => ({
+                    p: 1.75,
+                    borderRadius: 3,
+                    border: `1px solid ${theme.palette.divider}`,
+                    backgroundColor: alpha(
+                      theme.palette.text.primary,
+                      theme.palette.mode === "dark" ? 0.03 : 0.02,
+                    ),
+                  })}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: "center" }}
+                  >
+                    <Typography variant="subtitle2">Preview</Typography>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`${previewRows.length} line(s)`}
+                    />
                     {previewErrors > 0 && (
-                      <Alert severity="warning" sx={{ py: 0.5 }}>
-                        {previewErrors} line(s) have issues and will fail import.
-                      </Alert>
-                    )}
-                    <List dense sx={{ p: 0 }}>
-                      {previewRows.slice(0, 8).map((row, index) => (
-                        <div key={`${row.lineNumber}-${row.raw}`}>
-                          <ListItem sx={{ px: 0, alignItems: "flex-start" }}>
-                            <ListItemText
-                              primary={`Line ${row.lineNumber}: ${row.username || "(no username)"}`}
-                              secondary={
-                                <>
-                                  <Typography variant="caption" sx={{ display: "block" }}>
-                                    Password: {row.password ? "********" : "(empty)"}
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ display: "block" }}>
-                                    Shared Secret: {row.sharedSecret ? "********" : "(empty)"}
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ display: "block" }}>
-                                    Display Name: {row.displayName || "(empty)"}
-                                  </Typography>
-                                  {row.issue && (
-                                    <Typography
-                                      variant="caption"
-                                      color="error.main"
-                                      sx={{ display: "block" }}
-                                    >
-                                      Issue: {row.issue}
-                                    </Typography>
-                                  )}
-                                </>
-                              }
-                            />
-                          </ListItem>
-                          {index < Math.min(previewRows.length, 8) - 1 && <Divider />}
-                        </div>
-                      ))}
-                    </List>
-                    {previewRows.length > 8 && (
-                      <Typography variant="caption" color="text.secondary">
-                        Showing first 8 lines only.
-                      </Typography>
+                      <Chip
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        icon={<FaExclamationTriangle size={10} />}
+                        label={`${previewErrors} issue(s)`}
+                      />
                     )}
                   </Stack>
-                </Paper>
+
+                  <Stack spacing={0.75}>
+                    {previewRows.slice(0, 8).map((row) => (
+                      <Stack
+                        key={`${row.lineNumber}-${row.raw}`}
+                        direction="row"
+                        spacing={1.25}
+                        sx={(theme) => ({
+                          alignItems: "center",
+                          px: 1.25,
+                          py: 0.75,
+                          borderRadius: 2,
+                          backgroundColor: row.issue
+                            ? alpha(theme.palette.error.main, 0.09)
+                            : alpha(theme.palette.success.main, 0.08),
+                        })}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ width: 22, flexShrink: 0 }}
+                        >
+                          {row.lineNumber}
+                        </Typography>
+                        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                          <Typography
+                            variant="body2"
+                            noWrap
+                            sx={{ fontWeight: 600 }}
+                          >
+                            {row.username || "(no username)"}
+                            {row.displayName ? ` · ${row.displayName}` : ""}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            noWrap
+                            color={row.issue ? "error.main" : "text.secondary"}
+                            sx={{ display: "block" }}
+                          >
+                            {row.issue ||
+                              `pass ${row.password ? "••••••" : "—"} · secret ${
+                                row.sharedSecret ? "••••••" : "—"
+                              }`}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    ))}
+                  </Stack>
+
+                  {previewRows.length > 8 && (
+                    <Typography variant="caption" color="text.secondary">
+                      Showing first 8 of {previewRows.length} lines.
+                    </Typography>
+                  )}
+                </Stack>
               )}
             </Stack>
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={close} disabled={saving}>
+          <Button
+            onClick={close}
+            disabled={saving}
+            color="inherit"
+            sx={{ color: "text.secondary" }}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             type="submit"
             form="import-accounts-form"
-            disabled={saving}
+            disabled={saving || previewRows.length === 0}
+            startIcon={
+              saving ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <FaFileImport size={12} />
+              )
+            }
           >
-            Import
+            {saving
+              ? "Importing…"
+              : previewRows.length > 0
+                ? `Import ${previewRows.length}`
+                : "Import"}
           </Button>
         </DialogActions>
       </Dialog>

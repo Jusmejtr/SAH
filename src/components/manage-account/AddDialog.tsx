@@ -1,15 +1,18 @@
 import { useState } from "preact/hooks";
 import {
   Alert,
+  Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Stack,
   TextField,
+  alpha,
 } from "@mui/material";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaUserPlus } from "react-icons/fa";
 import type { NewAccount } from "../../api";
 
 type FormState = NewAccount;
@@ -63,12 +66,29 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
       <Button
         variant="contained"
         onClick={() => setOpen(true)}
-        startIcon={<FaPlus />}
+        startIcon={<FaPlus size={12} />}
       >
-        Add Account
+        Add account
       </Button>
-      <Dialog open={open} onClose={close} fullWidth>
-        <DialogTitle>Add Steam Account</DialogTitle>
+      <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Box
+              sx={(theme) => ({
+                width: 38,
+                height: 38,
+                borderRadius: 2,
+                display: "grid",
+                placeItems: "center",
+                color: theme.palette.primary.main,
+                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+              })}
+            >
+              <FaUserPlus size={17} />
+            </Box>
+            <span>Add Steam account</span>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
           <form id="add-steam-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -79,6 +99,7 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                 onChange={handleChange("username")}
                 required
                 fullWidth
+                autoFocus
               />
               <TextField
                 label="Password"
@@ -89,24 +110,31 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                 fullWidth
               />
               <TextField
-                label="Shared Secret"
+                label="Shared secret"
                 type="password"
                 value={form.sharedSecret}
                 onChange={handleChange("sharedSecret")}
                 required
                 fullWidth
+                helperText="Used to generate Steam Guard codes automatically."
               />
               <TextField
-                label="Display Name"
+                label="Display name"
                 value={form.displayName}
                 onChange={handleChange("displayName")}
                 fullWidth
+                helperText="Optional label shown on the account card."
               />
             </Stack>
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={close} disabled={saving}>
+          <Button
+            onClick={close}
+            disabled={saving}
+            color="inherit"
+            sx={{ color: "text.secondary" }}
+          >
             Cancel
           </Button>
           <Button
@@ -114,8 +142,11 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
             type="submit"
             form="add-steam-form"
             disabled={saving}
+            startIcon={
+              saving ? <CircularProgress size={14} color="inherit" /> : <FaPlus size={12} />
+            }
           >
-            Add Account
+            {saving ? "Adding…" : "Add account"}
           </Button>
         </DialogActions>
       </Dialog>

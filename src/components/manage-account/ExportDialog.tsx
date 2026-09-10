@@ -1,7 +1,9 @@
 import { useState } from "preact/hooks";
 import {
   Alert,
+  Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -9,7 +11,7 @@ import {
   MenuItem,
   Stack,
   TextField,
-  Typography,
+  alpha,
 } from "@mui/material";
 import { FaFileExport } from "react-icons/fa";
 import type { ExportLayout, ExportOptions, ExportResult } from "../../api";
@@ -75,21 +77,40 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
     <>
       <Button
         variant="outlined"
+        color="inherit"
         onClick={() => setOpen(true)}
-        startIcon={<FaFileExport />}
+        startIcon={<FaFileExport size={12} />}
       >
-        Export Accounts
+        Export
       </Button>
-      <Dialog open={open} onClose={close} fullWidth>
-        <DialogTitle>Export Accounts</DialogTitle>
+      <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Box
+              sx={(theme) => ({
+                width: 38,
+                height: 38,
+                borderRadius: 2,
+                display: "grid",
+                placeItems: "center",
+                color: theme.palette.primary.main,
+                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+              })}
+            >
+              <FaFileExport size={16} />
+            </Box>
+            <span>Export accounts</span>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
           <form id="export-accounts-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
               {error && <Alert severity="error">{error}</Alert>}
 
-              <Typography variant="body2" color="text.secondary">
-                Export includes username, password, and shared secret for each account.
-              </Typography>
+              <Alert severity="warning" variant="outlined">
+                The exported file contains plain-text passwords and shared
+                secrets. Store it somewhere safe.
+              </Alert>
 
               <TextField
                 select
@@ -140,7 +161,12 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={close} disabled={saving}>
+          <Button
+            onClick={close}
+            disabled={saving}
+            color="inherit"
+            sx={{ color: "text.secondary" }}
+          >
             Cancel
           </Button>
           <Button
@@ -148,8 +174,15 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
             type="submit"
             form="export-accounts-form"
             disabled={saving}
+            startIcon={
+              saving ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <FaFileExport size={12} />
+              )
+            }
           >
-            Export
+            {saving ? "Exporting…" : "Export"}
           </Button>
         </DialogActions>
       </Dialog>
