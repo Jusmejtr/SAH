@@ -75,7 +75,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "Steam-Account-Helper-Setup-v${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Steam-Account-Helper-Portable-v${version}.${ext}"
     }
   }
 }
