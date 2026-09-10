@@ -24,18 +24,18 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/material": "^9.3.1",
+    "@mui/material": "^9.4.0",
     "preact": "^10.29.8",
     "react-icons": "^5.7.0",
     "ws": "^8.21.3"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
-    "electron": "^43.4.1",
+    "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
-    "vite-plugin-electron": "^1.1.1"
+    "vite": "^8.3.0",
+    "vite-plugin-electron": "^1.1.2"
   },
   "build": {
     "appId": "com.jusmejtr.sah",
