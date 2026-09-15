@@ -16,6 +16,8 @@ import { ThemeProvider } from "@mui/material/styles";
 import { FaSearch, FaTimes, FaUserPlus } from "react-icons/fa";
 import Nav from "./components/Nav";
 import AccountCard from "./components/AccountCard";
+import EditDialog from "./components/manage-account/EditDialog";
+import DeleteConfirmDialog from "./components/DeleteConfirmDialog";
 import Footer from "./components/Footer";
 import UpdateBanner from "./components/UpdateBanner";
 import { COLOR_MODE_KEY, createAppTheme } from "./theme";
@@ -31,9 +33,11 @@ import {
   onUpdateStatus,
   openLog,
   removeAccount,
+  updateAccount,
 } from "./api";
 import type {
   Account,
+  AccountUpdate,
   ExportOptions,
   NewAccount,
   UpdateStatus,
@@ -68,6 +72,8 @@ export function App() {
   const [mode, setMode] = useState<ColorMode>(readInitialMode);
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState("");
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
 
   const theme = useMemo(() => createAppTheme(mode), [mode]);
 
@@ -98,6 +104,29 @@ export function App() {
   const handleAdd = async (account: NewAccount) => {
     const created = await addAccount(account);
     setAccounts((prev) => [...prev, created]);
+  };
+
+  const handleEditSave = async (id: string, account: AccountUpdate) => {
+    const updated = await updateAccount(id, account);
+    setAccounts((prev) =>
+      prev.map((item) => (item.id === id ? updated : item)),
+    );
+    setStatus("Account updated.");
+  };
+
+  const handleDeleteOne = async () => {
+    if (!deletingAccount) return;
+
+    setError("");
+    const target = deletingAccount;
+    setDeletingAccount(null);
+
+    try {
+      setAccounts(await removeAccount(target.id));
+      setStatus("Account deleted.");
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   const handleImport = async (items: NewAccount[]) => {
@@ -296,6 +325,8 @@ export function App() {
                     busy={loggingInId === account.id}
                     onToggleSelect={handleToggleSelect}
                     onLogin={handleLogin}
+                    onEdit={setEditingAccount}
+                    onDelete={setDeletingAccount}
                   />
                 ))}
               </Box>
@@ -328,6 +359,22 @@ export function App() {
           onOpenLog={() => {
             void openLog();
           }}
+        />
+
+        <EditDialog
+          account={editingAccount}
+          onClose={() => setEditingAccount(null)}
+          onSave={handleEditSave}
+        />
+
+        <DeleteConfirmDialog
+          open={Boolean(deletingAccount)}
+          selectedCount={1}
+          accountName={
+            deletingAccount?.displayName || deletingAccount?.username || ""
+          }
+          onClose={() => setDeletingAccount(null)}
+          onConfirm={() => void handleDeleteOne()}
         />
       </Box>
     </ThemeProvider>

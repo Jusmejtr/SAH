@@ -11,6 +11,8 @@ import {
   DialogTitle,
   MenuItem,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
   alpha,
@@ -58,8 +60,48 @@ type PreviewRow = {
   issue: string;
 };
 
+type MaFileRow = {
+  fileName: string;
+  username: string;
+  sharedSecret: string;
+  password: string;
+  issue: string;
+};
+
+const parseMaFile = (fileName: string, content: string): MaFileRow => {
+  const row: MaFileRow = {
+    fileName,
+    username: "",
+    sharedSecret: "",
+    password: "",
+    issue: "",
+  };
+
+  let parsed: Record<string, any>;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    row.issue = "File is not valid JSON.";
+    return row;
+  }
+
+  row.username = String(
+    parsed.account_name ?? parsed.AccountName ?? parsed.Session?.AccountName ?? "",
+  ).trim();
+  row.sharedSecret = String(
+    parsed.shared_secret ?? parsed.SharedSecret ?? "",
+  ).trim();
+
+  if (!row.username) row.issue = "Missing account_name.";
+  else if (!row.sharedSecret) row.issue = "Missing shared_secret.";
+
+  return row;
+};
+
 export default function ImportDialog({ onImport }: ImportDialogProps) {
   const [open, setOpen] = useState(false);
+  const [source, setSource] = useState<"text" | "mafile">("text");
+  const [maRows, setMaRows] = useState<MaFileRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [fileContent, setFileContent] = useState("");
   const [layout, setLayout] = useState<ColumnLayout>(
@@ -130,6 +172,8 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
     setOpen(false);
     setFileName("");
     setFileContent("");
+    setMaRows([]);
+    setSource("text");
     setLayout("username,password,sharedSecret");
     setDelimiter(DEFAULT_DELIMITER);
     setCustomDelimiter("");
@@ -212,13 +256,62 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
     setFileContent(await file.text());
   };
 
+  const handleMaFileChange = async (
+    event: Event & { currentTarget: HTMLInputElement },
+  ) => {
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
+
+    if (files.length === 0) return;
+
+    const rows = await Promise.all(
+      files.map(async (file) => parseMaFile(file.name, await file.text())),
+    );
+
+    setMaRows((prev) => {
+      const merged = [...prev];
+      rows.forEach((row) => {
+        const index = merged.findIndex(
+          (item) => item.fileName === row.fileName,
+        );
+        if (index >= 0) merged[index] = { ...row, password: merged[index].password };
+        else merged.push(row);
+      });
+      return merged;
+    });
+
+    input.value = "";
+  };
+
+  const parseMaAccounts = () => {
+    if (maRows.length === 0) {
+      throw new Error("Select at least one .maFile.");
+    }
+
+    return maRows.map((row) => {
+      if (row.issue) {
+        throw new Error(`${row.fileName}: ${row.issue}`);
+      }
+      if (!row.password) {
+        throw new Error(`${row.fileName}: password is required.`);
+      }
+
+      return {
+        username: row.username,
+        password: row.password,
+        sharedSecret: row.sharedSecret,
+        displayName: "",
+      } satisfies NewAccount;
+    });
+  };
+
   const handleSubmit = async (event?: { preventDefault: () => void }) => {
     event?.preventDefault();
     setSaving(true);
     setError("");
 
     try {
-      const accounts = parseAccounts();
+      const accounts = source === "mafile" ? parseMaAccounts() : parseAccounts();
       await onImport(accounts);
       close();
     } catch (err) {
@@ -262,6 +355,19 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
             <Stack spacing={2} sx={{ mt: 1 }}>
               {error && <Alert severity="error">{error}</Alert>}
 
+              <Tabs
+                value={source}
+                onChange={(_event, value) =>
+                  setSource(value as "text" | "mafile")
+                }
+                variant="fullWidth"
+              >
+                <Tab value="text" label="Text list" />
+                <Tab value="mafile" label=".maFile" />
+              </Tabs>
+
+              {source === "text" ? (
+                <>
               <Box
                 component="label"
                 sx={(theme) => ({
@@ -437,6 +543,121 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                   )}
                 </Stack>
               )}
+                </>
+              ) : (
+                <>
+                  <Box
+                    component="label"
+                    sx={(theme) => ({
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 0.75,
+                      py: 3,
+                      px: 2,
+                      textAlign: "center",
+                      cursor: "pointer",
+                      borderRadius: 3,
+                      border: `1px dashed ${
+                        maRows.length > 0
+                          ? alpha(theme.palette.primary.main, 0.6)
+                          : theme.palette.divider
+                      }`,
+                      backgroundColor:
+                        maRows.length > 0
+                          ? alpha(theme.palette.primary.main, 0.06)
+                          : "transparent",
+                      "&:hover": {
+                        borderColor: alpha(theme.palette.primary.main, 0.6),
+                        backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                      },
+                    })}
+                  >
+                    <input
+                      type="file"
+                      hidden
+                      multiple
+                      accept=".maFile,.mafile,application/json"
+                      onChange={handleMaFileChange}
+                    />
+                    <Box sx={{ color: "primary.main", display: "flex" }}>
+                      <FaUpload size={20} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {maRows.length > 0
+                        ? `${maRows.length} .maFile(s) selected`
+                        : "Choose .maFile files"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Steam Desktop Authenticator files. Passwords are not
+                      stored in .maFile, so enter them below.
+                    </Typography>
+                  </Box>
+
+                  {maRows.length > 0 && (
+                    <Stack spacing={1.5}>
+                      {maRows.map((row, index) => (
+                        <Stack
+                          key={row.fileName}
+                          spacing={1}
+                          sx={(theme) => ({
+                            p: 1.5,
+                            borderRadius: 3,
+                            border: `1px solid ${theme.palette.divider}`,
+                          })}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{ alignItems: "center" }}
+                          >
+                            <Typography
+                              variant="body2"
+                              noWrap
+                              sx={{ fontWeight: 600, flexGrow: 1, minWidth: 0 }}
+                            >
+                              {row.username || row.fileName}
+                            </Typography>
+                            {row.issue ? (
+                              <Chip
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                icon={<FaExclamationTriangle size={10} />}
+                                label={row.issue}
+                              />
+                            ) : (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                label="secret ok"
+                              />
+                            )}
+                          </Stack>
+                          <TextField
+                            label="Password"
+                            type="password"
+                            size="small"
+                            fullWidth
+                            value={row.password}
+                            disabled={Boolean(row.issue)}
+                            onChange={(event) => {
+                              const value = readEventValue(event);
+                              setMaRows((prev) =>
+                                prev.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...item, password: value }
+                                    : item,
+                                ),
+                              );
+                            }}
+                          />
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+                </>
+              )}
             </Stack>
           </form>
         </DialogContent>
@@ -453,7 +674,12 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
             variant="contained"
             type="submit"
             form="import-accounts-form"
-            disabled={saving || previewRows.length === 0}
+            disabled={
+              saving ||
+              (source === "mafile"
+                ? maRows.length === 0
+                : previewRows.length === 0)
+            }
             startIcon={
               saving ? (
                 <CircularProgress size={14} color="inherit" />
@@ -464,9 +690,13 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
           >
             {saving
               ? "Importing…"
-              : previewRows.length > 0
-                ? `Import ${previewRows.length}`
-                : "Import"}
+              : source === "mafile"
+                ? maRows.length > 0
+                  ? `Import ${maRows.length}`
+                  : "Import"
+                : previewRows.length > 0
+                  ? `Import ${previewRows.length}`
+                  : "Import"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -11,6 +11,15 @@ export type NewAccount = {
   displayName: string;
 };
 
+export type AccountUpdate = NewAccount;
+
+export type AccountSecrets = {
+  username: string;
+  displayName: string;
+  password: string;
+  sharedSecret: string;
+};
+
 export type AppSettings = {
   width: number;
   height: number;
@@ -60,6 +69,8 @@ export type UpdateStatus = {
 type SahApi = {
   listAccounts: () => Promise<Account[]>;
   addAccount: (account: NewAccount) => Promise<Account>;
+  updateAccount: (id: string, account: AccountUpdate) => Promise<Account>;
+  getAccountSecrets: (id: string) => Promise<AccountSecrets>;
   removeAccount: (id: string) => Promise<Account[]>;
   exportAccounts: (options: ExportOptions) => Promise<ExportResult>;
   loginAccount: (id: string) => Promise<LoginResult>;
@@ -91,6 +102,9 @@ const getApi = (): SahApi => {
 
 export const listAccounts = () => getApi().listAccounts();
 export const addAccount = (account: NewAccount) => getApi().addAccount(account);
+export const updateAccount = (id: string, account: AccountUpdate) =>
+  getApi().updateAccount(id, account);
+export const getAccountSecrets = (id: string) => getApi().getAccountSecrets(id);
 export const removeAccount = (id: string) => getApi().removeAccount(id);
 export const exportAccounts = (options: ExportOptions) =>
   getApi().exportAccounts(options);

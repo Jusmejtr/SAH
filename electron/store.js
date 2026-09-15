@@ -117,6 +117,45 @@ export const addAccount = ({
   return toPublic(account);
 };
 
+export const updateAccount = (
+  id,
+  { username, password, sharedSecret, displayName },
+) => {
+  assertEncryptionAvailable();
+
+  const accounts = readRaw();
+  const target = accounts.find((item) => item.id === id);
+  if (!target) throw new Error("Account not found.");
+
+  const trimmedUsername = String(username ?? "").trim();
+  if (!trimmedUsername) throw new Error("Username is required.");
+
+  if (
+    accounts.some(
+      (item) =>
+        item.id !== id &&
+        item.username.toLowerCase() === trimmedUsername.toLowerCase(),
+    )
+  ) {
+    throw new Error("An account with this username already exists.");
+  }
+
+  target.username = trimmedUsername;
+  target.displayName = String(displayName ?? "").trim();
+
+  if (password) {
+    target.password = encrypt(password);
+  }
+
+  const trimmedSharedSecret = String(sharedSecret ?? "").trim();
+  if (trimmedSharedSecret) {
+    target.sharedSecret = encrypt(trimmedSharedSecret);
+  }
+
+  writeRaw(accounts);
+  return toPublic(target);
+};
+
 export const removeAccount = (id) => {
   const accounts = readRaw();
   const next = accounts.filter((account) => account.id !== id);

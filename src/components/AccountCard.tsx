@@ -2,10 +2,15 @@ import {
   Box,
   Checkbox,
   CircularProgress,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Typography,
   alpha,
 } from "@mui/material";
-import { FaCheck } from "react-icons/fa";
+import { useState } from "preact/hooks";
+import { FaCheck, FaPen, FaTrashAlt } from "react-icons/fa";
 import type { Account } from "../api";
 
 type AccountCardProps = {
@@ -15,6 +20,8 @@ type AccountCardProps = {
   busy: boolean;
   onToggleSelect: (id: string) => void;
   onLogin: (id: string) => void;
+  onEdit: (account: Account) => void;
+  onDelete: (account: Account) => void;
 };
 
 const hueFrom = (value: string) => {
@@ -40,10 +47,24 @@ export default function AccountCard({
   busy,
   onToggleSelect,
   onLogin,
+  onEdit,
+  onDelete,
 }: AccountCardProps) {
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const title = account.displayName || account.username;
   const hue = hueFrom(account.username || account.id);
   const avatarColor = `hsl(${hue} 34% 46%)`;
+
+  const closeMenu = () => setMenuPosition(null);
+
+  const handleContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setMenuPosition({ top: event.clientY, left: event.clientX });
+  };
 
   const handleActivate = () => {
     if (busy) return;
@@ -55,10 +76,12 @@ export default function AccountCard({
   };
 
   return (
+    <>
     <Box
       role="button"
       tabIndex={busy ? -1 : 0}
       onClick={handleActivate}
+      onContextMenu={handleContextMenu}
       onKeyDown={(event: KeyboardEvent) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -160,5 +183,37 @@ export default function AccountCard({
         </>
       )}
     </Box>
+
+    <Menu
+      open={Boolean(menuPosition)}
+      onClose={closeMenu}
+      anchorReference="anchorPosition"
+      anchorPosition={menuPosition ?? undefined}
+    >
+      <MenuItem
+        onClick={() => {
+          closeMenu();
+          onEdit(account);
+        }}
+      >
+        <ListItemIcon>
+          <FaPen size={13} />
+        </ListItemIcon>
+        <ListItemText>Edit</ListItemText>
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          closeMenu();
+          onDelete(account);
+        }}
+        sx={{ color: "error.main" }}
+      >
+        <ListItemIcon sx={{ color: "error.main" }}>
+          <FaTrashAlt size={13} />
+        </ListItemIcon>
+        <ListItemText>Delete</ListItemText>
+      </MenuItem>
+    </Menu>
+    </>
   );
 }

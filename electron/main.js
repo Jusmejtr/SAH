@@ -10,6 +10,7 @@ import {
   listAccounts,
   removeAccount,
   setSettings,
+  updateAccount,
 } from "./store.js";
 import { cancelLogin, loginToSteam } from "./steam/index.js";
 import { CancelledError } from "./errors.js";
@@ -54,6 +55,10 @@ Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
   ipcMain.handle("accounts:list", () => listAccounts());
   ipcMain.handle("accounts:add", (_event, account) => addAccount(account));
+  ipcMain.handle("accounts:update", (_event, id, account) =>
+    updateAccount(id, account),
+  );
+  ipcMain.handle("accounts:secrets", (_event, id) => getSecrets(id));
   ipcMain.handle("accounts:remove", (_event, id) => removeAccount(id));
   ipcMain.handle("accounts:export", async (event, options) => {
     const hostWindow = BrowserWindow.fromWebContents(event.sender);

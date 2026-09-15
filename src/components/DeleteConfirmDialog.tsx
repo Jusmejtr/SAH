@@ -14,6 +14,7 @@ import { FaExclamationTriangle, FaTrashAlt } from "react-icons/fa";
 type DeleteConfirmDialogProps = {
   open: boolean;
   selectedCount: number;
+  accountName?: string;
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -21,6 +22,7 @@ type DeleteConfirmDialogProps = {
 export default function DeleteConfirmDialog({
   open,
   selectedCount,
+  accountName,
   onClose,
   onConfirm,
 }: DeleteConfirmDialogProps) {
@@ -41,14 +43,18 @@ export default function DeleteConfirmDialog({
           >
             <FaExclamationTriangle size={17} />
           </Box>
-          <span>Delete selected accounts?</span>
+          <span>
+            {accountName ? "Delete this account?" : "Delete selected accounts?"}
+          </span>
         </Stack>
       </DialogTitle>
       <DialogContent>
         <DialogContentText>
-          {selectedCount === 1
-            ? "This will permanently delete 1 selected account. This action cannot be undone."
-            : `This will permanently delete ${selectedCount} selected accounts. This action cannot be undone.`}
+          {accountName
+            ? `This will permanently delete “${accountName}”. This action cannot be undone.`
+            : selectedCount === 1
+              ? "This will permanently delete 1 selected account. This action cannot be undone."
+              : `This will permanently delete ${selectedCount} selected accounts. This action cannot be undone.`}
         </DialogContentText>
       </DialogContent>
       <DialogActions>

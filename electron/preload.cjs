@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("sah", {
   listAccounts: () => ipcRenderer.invoke("accounts:list"),
   addAccount: (account) => ipcRenderer.invoke("accounts:add", account),
+  updateAccount: (id, account) =>
+    ipcRenderer.invoke("accounts:update", id, account),
+  getAccountSecrets: (id) => ipcRenderer.invoke("accounts:secrets", id),
   removeAccount: (id) => ipcRenderer.invoke("accounts:remove", id),
   exportAccounts: (options) => ipcRenderer.invoke("accounts:export", options),
   loginAccount: (id) => ipcRenderer.invoke("accounts:login", id),
