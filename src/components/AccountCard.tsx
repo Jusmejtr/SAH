@@ -5,7 +5,7 @@ import {
   Typography,
   alpha,
 } from "@mui/material";
-import { FaCheck, FaPlay } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa";
 import type { Account } from "../api";
 
 type AccountCardProps = {
@@ -58,7 +58,6 @@ export default function AccountCard({
     <Box
       role="button"
       tabIndex={busy ? -1 : 0}
-      aria-label={manageMode ? `Select ${title}` : `Sign in as ${title}`}
       onClick={handleActivate}
       onKeyDown={(event: KeyboardEvent) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -77,7 +76,7 @@ export default function AccountCard({
         gap: 1.25,
         textAlign: "center",
         cursor: busy ? "default" : "pointer",
-        borderRadius: 4,
+        borderRadius: 2,
         overflow: "hidden",
         outline: "none",
         userSelect: "none",
@@ -158,32 +157,6 @@ export default function AccountCard({
               @{account.username}
             </Typography>
           </Box>
-
-          {!manageMode && (
-            <Box
-              className="sah-card-action"
-              sx={(theme) => ({
-                position: "absolute",
-                bottom: 10,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 0.75,
-                px: 1.25,
-                py: 0.4,
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700,
-                color: theme.palette.text.secondary,
-                backgroundColor: alpha(theme.palette.text.primary, 0.08),
-                opacity: 0,
-                transition: "opacity .16s ease",
-                pointerEvents: "none",
-              })}
-            >
-              <FaPlay size={9} />
-              Sign in
-            </Box>
-          )}
         </>
       )}
     </Box>
