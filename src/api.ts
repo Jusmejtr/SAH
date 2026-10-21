@@ -2,6 +2,30 @@ export type Account = {
   id: string;
   username: string;
   displayName: string;
+  hasSharedSecret: boolean;
+  hasAuthenticator: boolean;
+};
+
+export type GuardSetupStep =
+  | { step: "email-code"; domain: string; error: string }
+  | {
+      step: "activation";
+      revocationCode: string;
+      phoneHint: string;
+      error?: string;
+    }
+  | { step: "done"; account: Account }
+  | { step: "error"; message: string };
+
+export type SaveFileResult = {
+  cancelled: boolean;
+  filePath: string;
+};
+
+export type GuardCode = {
+  code: string;
+  validUntil: number;
+  period: number;
 };
 
 export type NewAccount = {
@@ -12,6 +36,10 @@ export type NewAccount = {
 };
 
 export type AccountUpdate = NewAccount;
+
+export type AddOptions = {
+  setupGuard: boolean;
+};
 
 export type AccountSecrets = {
   username: string;
@@ -72,6 +100,13 @@ type SahApi = {
   updateAccount: (id: string, account: AccountUpdate) => Promise<Account>;
   getAccountSecrets: (id: string) => Promise<AccountSecrets>;
   removeAccount: (id: string) => Promise<Account[]>;
+  getGuardCode: (id: string) => Promise<GuardCode>;
+  copyText: (text: string) => Promise<boolean>;
+  startGuardSetup: (id: string) => Promise<GuardSetupStep>;
+  submitGuardEmailCode: (code: string) => Promise<GuardSetupStep>;
+  finalizeGuardSetup: (code: string) => Promise<GuardSetupStep>;
+  cancelGuardSetup: () => Promise<boolean>;
+  exportMaFile: (id: string) => Promise<SaveFileResult>;
   exportAccounts: (options: ExportOptions) => Promise<ExportResult>;
   loginAccount: (id: string) => Promise<LoginResult>;
   cancelLogin: () => Promise<boolean>;
@@ -106,6 +141,15 @@ export const updateAccount = (id: string, account: AccountUpdate) =>
   getApi().updateAccount(id, account);
 export const getAccountSecrets = (id: string) => getApi().getAccountSecrets(id);
 export const removeAccount = (id: string) => getApi().removeAccount(id);
+export const getGuardCode = (id: string) => getApi().getGuardCode(id);
+export const copyText = (text: string) => getApi().copyText(text);
+export const startGuardSetup = (id: string) => getApi().startGuardSetup(id);
+export const submitGuardEmailCode = (code: string) =>
+  getApi().submitGuardEmailCode(code);
+export const finalizeGuardSetup = (code: string) =>
+  getApi().finalizeGuardSetup(code);
+export const cancelGuardSetup = () => getApi().cancelGuardSetup();
+export const exportMaFile = (id: string) => getApi().exportMaFile(id);
 export const exportAccounts = (options: ExportOptions) =>
   getApi().exportAccounts(options);
 export const loginAccount = (id: string) => getApi().loginAccount(id);

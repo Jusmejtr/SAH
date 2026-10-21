@@ -11,7 +11,7 @@ export default defineConfig(async () => ({
         vite: {
           build: {
             rolldownOptions: {
-              external: ["electron-updater"],
+              external: ["electron-updater", "steamcommunity", "steam-totp"],
             },
           },
         },

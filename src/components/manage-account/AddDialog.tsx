@@ -9,16 +9,19 @@ import {
   DialogContent,
   DialogTitle,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   alpha,
 } from "@mui/material";
-import { FaPlus, FaUserPlus } from "react-icons/fa";
-import type { NewAccount } from "../../api";
+import { FaPlus, FaShieldAlt, FaUserPlus } from "react-icons/fa";
+import type { AddOptions, NewAccount } from "../../api";
 
 type FormState = NewAccount;
+type Mode = "secret" | "setup";
 
 type AddDialogProps = {
-  onAdd: (account: NewAccount) => Promise<void>;
+  onAdd: (account: NewAccount, options: AddOptions) => Promise<void>;
 };
 
 const initialForm: FormState = {
@@ -30,12 +33,15 @@ const initialForm: FormState = {
 
 export default function AddDialog({ onAdd }: AddDialogProps) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>("secret");
   const [form, setForm] = useState<FormState>(initialForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const setup = mode === "setup";
 
   const close = () => {
     setOpen(false);
+    setMode("secret");
     setForm(initialForm);
     setError("");
   };
@@ -52,7 +58,10 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
     setSaving(true);
     setError("");
     try {
-      await onAdd(form);
+      await onAdd(
+        setup ? { ...form, sharedSecret: "" } : form,
+        { setupGuard: setup },
+      );
       close();
     } catch (err) {
       setError((err as Error).message);
@@ -93,6 +102,31 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
           <form id="add-steam-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
               {error && <Alert severity="error">{error}</Alert>}
+
+              <Tabs
+                value={mode}
+                onChange={(_event, value) => {
+                  setMode(value as Mode);
+                  setError("");
+                }}
+                variant="fullWidth"
+              >
+                <Tab value="secret" label="Shared secret" />
+                <Tab value="setup" label="Set up Steam Guard" />
+              </Tabs>
+
+              {setup && (
+                <Alert
+                  severity="info"
+                  icon={<FaShieldAlt size={16} />}
+                  sx={{ alignItems: "center" }}
+                >
+                  Only the username and password are needed. After adding,
+                  the app signs in and sets up a Steam Guard Mobile
+                  Authenticator for the account.
+                </Alert>
+              )}
+
               <TextField
                 label="Username"
                 value={form.username}
@@ -109,15 +143,16 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                 required
                 fullWidth
               />
-              <TextField
-                label="Shared secret"
-                type="password"
-                value={form.sharedSecret}
-                onChange={handleChange("sharedSecret")}
-                required
-                fullWidth
-                helperText="Used to generate Steam Guard codes automatically."
-              />
+              {!setup && (
+                <TextField
+                  label="Shared secret"
+                  type="password"
+                  value={form.sharedSecret}
+                  onChange={handleChange("sharedSecret")}
+                  fullWidth
+                  helperText="Used to generate Steam Guard codes. Leave empty if the account has no mobile authenticator."
+                />
+              )}
               <TextField
                 label="Display name"
                 value={form.displayName}
@@ -143,10 +178,16 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
             form="add-steam-form"
             disabled={saving}
             startIcon={
-              saving ? <CircularProgress size={14} color="inherit" /> : <FaPlus size={12} />
+              saving ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : setup ? (
+                <FaShieldAlt size={12} />
+              ) : (
+                <FaPlus size={12} />
+              )
             }
           >
-            {saving ? "Adding…" : "Add account"}
+            {saving ? "Adding…" : setup ? "Add & set up" : "Add account"}
           </Button>
         </DialogActions>
       </Dialog>

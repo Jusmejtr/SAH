@@ -77,7 +77,45 @@ const toPublic = (account) => ({
   id: account.id,
   username: account.username,
   displayName: account.displayName ?? "",
+  hasSharedSecret: Boolean(account.sharedSecret),
+  hasAuthenticator: Boolean(account.authenticator),
 });
+
+const findAccount = (accounts, id) => {
+  const account = accounts.find((item) => item.id === id);
+  if (!account) throw new Error("Account not found.");
+  return account;
+};
+
+// Authenticator data Steam returned but that is not activated yet.
+export const savePendingAuthenticator = (id, data) => {
+  assertEncryptionAvailable();
+  const accounts = readRaw();
+  const target = findAccount(accounts, id);
+  target.pendingAuthenticator = encrypt(JSON.stringify(data));
+  writeRaw(accounts);
+};
+
+export const completeAuthenticator = (id, data) => {
+  assertEncryptionAvailable();
+  const accounts = readRaw();
+  const target = findAccount(accounts, id);
+  target.sharedSecret = encrypt(data.shared_secret);
+  target.authenticator = encrypt(JSON.stringify(data));
+  delete target.pendingAuthenticator;
+  writeRaw(accounts);
+  return toPublic(target);
+};
+
+// Full authenticator data (maFile contents) for accounts set up in this app.
+export const getAuthenticator = (id) => {
+  assertEncryptionAvailable();
+  const target = findAccount(readRaw(), id);
+  if (!target.authenticator) {
+    throw new Error("No authenticator data is stored for this account.");
+  }
+  return JSON.parse(decrypt(target.authenticator));
+};
 
 export const listAccounts = () => readRaw().map(toPublic);
 
@@ -93,7 +131,6 @@ export const addAccount = ({
   const trimmedSharedSecret = String(sharedSecret ?? "").trim();
   if (!trimmedUsername) throw new Error("Username is required.");
   if (!password) throw new Error("Password is required.");
-  if (!trimmedSharedSecret) throw new Error("Shared secret is required.");
 
   const accounts = readRaw();
   if (
@@ -109,7 +146,7 @@ export const addAccount = ({
     username: trimmedUsername,
     displayName: String(displayName ?? "").trim(),
     password: encrypt(password),
-    sharedSecret: encrypt(trimmedSharedSecret),
+    sharedSecret: trimmedSharedSecret ? encrypt(trimmedSharedSecret) : "",
   };
 
   accounts.push(account);
@@ -188,7 +225,7 @@ export const exportAccounts = ({ delimiter, layout }) => {
     const record = {
       username: account.username,
       password: decrypt(account.password),
-      sharedSecret: decrypt(account.sharedSecret),
+      sharedSecret: account.sharedSecret ? decrypt(account.sharedSecret) : "",
       displayName: account.displayName ?? "",
     };
 

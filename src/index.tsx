@@ -18,6 +18,8 @@ import Nav from "./components/Nav";
 import AccountCard from "./components/AccountCard";
 import EditDialog from "./components/manage-account/EditDialog";
 import DeleteConfirmDialog from "./components/DeleteConfirmDialog";
+import GuardCodeDialog from "./components/GuardCodeDialog";
+import SetupGuardDialog from "./components/SetupGuardDialog";
 import Footer from "./components/Footer";
 import UpdateBanner from "./components/UpdateBanner";
 import { COLOR_MODE_KEY, createAppTheme } from "./theme";
@@ -26,6 +28,7 @@ import {
   addAccount,
   cancelLogin,
   exportAccounts,
+  exportMaFile,
   getUpdateStatus,
   listAccounts,
   loginAccount,
@@ -38,6 +41,7 @@ import {
 import type {
   Account,
   AccountUpdate,
+  AddOptions,
   ExportOptions,
   NewAccount,
   UpdateStatus,
@@ -74,6 +78,8 @@ export function App() {
   const [updateDismissed, setUpdateDismissed] = useState("");
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
+  const [guardAccount, setGuardAccount] = useState<Account | null>(null);
+  const [setupAccount, setSetupAccount] = useState<Account | null>(null);
 
   const theme = useMemo(() => createAppTheme(mode), [mode]);
 
@@ -101,9 +107,26 @@ export function App() {
     );
   }, [accounts]);
 
-  const handleAdd = async (account: NewAccount) => {
+  const handleAdd = async (account: NewAccount, options?: AddOptions) => {
     const created = await addAccount(account);
     setAccounts((prev) => [...prev, created]);
+    if (options?.setupGuard) setSetupAccount(created);
+  };
+
+  const handleGuardSetupDone = (updated: Account) => {
+    setAccounts((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item)),
+    );
+  };
+
+  const handleExportMaFile = async (account: Account) => {
+    setError("");
+    try {
+      const result = await exportMaFile(account.id);
+      if (!result.cancelled) setStatus("maFile saved.");
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   const handleEditSave = async (id: string, account: AccountUpdate) => {
@@ -327,6 +350,9 @@ export function App() {
                     onLogin={handleLogin}
                     onEdit={setEditingAccount}
                     onDelete={setDeletingAccount}
+                    onShowGuard={setGuardAccount}
+                    onSetupGuard={setSetupAccount}
+                    onExportMaFile={(item) => void handleExportMaFile(item)}
                   />
                 ))}
               </Box>
@@ -367,11 +393,27 @@ export function App() {
           onSave={handleEditSave}
         />
 
+        <GuardCodeDialog
+          account={guardAccount}
+          onClose={() => setGuardAccount(null)}
+        />
+
+        <SetupGuardDialog
+          account={setupAccount}
+          onClose={() => setSetupAccount(null)}
+          onCompleted={handleGuardSetupDone}
+        />
+
         <DeleteConfirmDialog
           open={Boolean(deletingAccount)}
           selectedCount={1}
           accountName={
             deletingAccount?.displayName || deletingAccount?.username || ""
+          }
+          warning={
+            deletingAccount?.hasAuthenticator
+              ? "Its Steam Guard authenticator was set up here. Save the maFile first (right-click → Save maFile…), or you will need the revocation code to sign in."
+              : ""
           }
           onClose={() => setDeletingAccount(null)}
           onConfirm={() => void handleDeleteOne()}

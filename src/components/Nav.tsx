@@ -32,10 +32,15 @@ import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import SettingsDialog from "./SettingsDialog";
 import { accentGradient } from "../theme";
 import type { ColorMode } from "../theme";
-import type { ExportOptions, ExportResult, NewAccount } from "../api";
+import type {
+  AddOptions,
+  ExportOptions,
+  ExportResult,
+  NewAccount,
+} from "../api";
 
 type NavProps = {
-  onAdd: (account: NewAccount) => Promise<void>;
+  onAdd: (account: NewAccount, options: AddOptions) => Promise<void>;
   onImport: (accounts: NewAccount[]) => Promise<void>;
   onExport: (options: ExportOptions) => Promise<ExportResult>;
   manageMode: boolean;

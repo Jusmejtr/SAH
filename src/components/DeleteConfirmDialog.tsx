@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -15,6 +16,7 @@ type DeleteConfirmDialogProps = {
   open: boolean;
   selectedCount: number;
   accountName?: string;
+  warning?: string;
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -23,6 +25,7 @@ export default function DeleteConfirmDialog({
   open,
   selectedCount,
   accountName,
+  warning,
   onClose,
   onConfirm,
 }: DeleteConfirmDialogProps) {
@@ -56,6 +59,11 @@ export default function DeleteConfirmDialog({
               ? "This will permanently delete 1 selected account. This action cannot be undone."
               : `This will permanently delete ${selectedCount} selected accounts. This action cannot be undone.`}
         </DialogContentText>
+        {warning && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            {warning}
+          </Alert>
+        )}
       </DialogContent>
       <DialogActions>
         <Button color="inherit" onClick={onClose} sx={{ color: "text.secondary" }}>

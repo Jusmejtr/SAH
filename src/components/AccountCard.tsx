@@ -2,15 +2,24 @@ import {
   Box,
   Checkbox,
   CircularProgress,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
+  Tooltip,
   Typography,
   alpha,
 } from "@mui/material";
 import { useState } from "preact/hooks";
-import { FaCheck, FaPen, FaTrashAlt } from "react-icons/fa";
+import {
+  FaCheck,
+  FaDownload,
+  FaPen,
+  FaPlusCircle,
+  FaShieldAlt,
+  FaTrashAlt,
+} from "react-icons/fa";
 import type { Account } from "../api";
 
 type AccountCardProps = {
@@ -22,6 +31,9 @@ type AccountCardProps = {
   onLogin: (id: string) => void;
   onEdit: (account: Account) => void;
   onDelete: (account: Account) => void;
+  onShowGuard: (account: Account) => void;
+  onSetupGuard: (account: Account) => void;
+  onExportMaFile: (account: Account) => void;
 };
 
 const hueFrom = (value: string) => {
@@ -49,6 +61,9 @@ export default function AccountCard({
   onLogin,
   onEdit,
   onDelete,
+  onShowGuard,
+  onSetupGuard,
+  onExportMaFile,
 }: AccountCardProps) {
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
@@ -135,6 +150,36 @@ export default function AccountCard({
         />
       )}
 
+      {account.hasSharedSecret && !manageMode && !busy && (
+        <Tooltip title="Steam Guard code" placement="top">
+          <IconButton
+            className="sah-card-action"
+            size="small"
+            aria-label="Show Steam Guard code"
+            onClick={(event) => {
+              event.stopPropagation();
+              onShowGuard(account);
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+            sx={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              zIndex: 2,
+              color: "text.secondary",
+              opacity: 0.55,
+              transition: "opacity .16s ease, color .16s ease",
+              "&:hover, &:focus-visible": {
+                opacity: 1,
+                color: "primary.main",
+              },
+            }}
+          >
+            <FaShieldAlt size={14} />
+          </IconButton>
+        </Tooltip>
+      )}
+
       {busy ? (
         <>
           <CircularProgress size={34} thickness={4} />
@@ -190,6 +235,44 @@ export default function AccountCard({
       anchorReference="anchorPosition"
       anchorPosition={menuPosition ?? undefined}
     >
+      {account.hasSharedSecret ? (
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            onShowGuard(account);
+          }}
+        >
+          <ListItemIcon>
+            <FaShieldAlt size={13} />
+          </ListItemIcon>
+          <ListItemText>Steam Guard code</ListItemText>
+        </MenuItem>
+      ) : (
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            onSetupGuard(account);
+          }}
+        >
+          <ListItemIcon>
+            <FaPlusCircle size={13} />
+          </ListItemIcon>
+          <ListItemText>Set up Steam Guard…</ListItemText>
+        </MenuItem>
+      )}
+      {account.hasAuthenticator && (
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            onExportMaFile(account);
+          }}
+        >
+          <ListItemIcon>
+            <FaDownload size={13} />
+          </ListItemIcon>
+          <ListItemText>Save maFile…</ListItemText>
+        </MenuItem>
+      )}
       <MenuItem
         onClick={() => {
           closeMenu();

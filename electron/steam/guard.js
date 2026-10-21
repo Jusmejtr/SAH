@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 
 const CODE_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY";
 
+export const GUARD_PERIOD_MS = 30000;
+
 const decodeSharedSecret = (sharedSecret) => {
   const value = String(sharedSecret ?? "").trim();
   if (!value) throw new Error("Account has no shared secret.");
