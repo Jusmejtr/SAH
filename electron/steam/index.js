@@ -1,12 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
 import { clipboard } from "electron";
 import { generateGuardCode } from "./guard.js";
 import { findPage } from "./cef.js";
 import { log } from "../log.js";
 import { CancelledError, throwIfCancelled } from "../errors.js";
-import { isSteamRunning, isWindows, resolveSteamExe, shutdownSteam } from "./process.js";
+import { launchSteam, resolveSteam, shutdownSteam } from "./process.js";
 import { INSTALL, PROBE } from "./page-scripts.js";
 
 const SIGN_IN_TIMEOUT_MS = 90000;
@@ -23,27 +22,11 @@ export const cancelLogin = () => {
 };
 
 // Steam only exposes its CEF pages for inspection when this marker file exists at startup.
-const enableCefDebugging = (steamExe) => {
-  const marker = path.join(
-    path.dirname(steamExe),
-    ".cef-enable-remote-debugging",
-  );
+const enableCefDebugging = (dataDir) => {
+  const marker = path.join(dataDir, ".cef-enable-remote-debugging");
   if (fs.existsSync(marker)) return;
   fs.writeFileSync(marker, "");
   log("cef: created", marker);
-};
-
-const launchSteam = (steamExe) => {
-  if (isWindows) {
-    spawn(steamExe, [], {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-    }).unref();
-    return;
-  }
-
-  spawn("open", ["-a", steamExe], { detached: true, stdio: "ignore" }).unref();
 };
 
 const quote = (value) => JSON.stringify(String(value));
@@ -218,22 +201,22 @@ export const loginToSteam = async (credentials, onProgress = () => {}) => {
 
   try {
     onProgress("Locating Steam");
-    const steamExe = await resolveSteamExe();
-    log("login: exe", steamExe, "user", credentials.username);
+    const steam = await resolveSteam();
+    log("login: steam", steam.flavor, steam.command.join(" "), "user", credentials.username);
     throwIfCancelled(job);
 
     onProgress("Closing running Steam");
-    await shutdownSteam(steamExe, job);
+    await shutdownSteam(steam, job);
     throwIfCancelled(job);
 
-    if (isWindows) {
+    if (steam.dataDir) {
       onProgress("Preparing Steam");
-      enableCefDebugging(steamExe);
+      enableCefDebugging(steam.dataDir);
       throwIfCancelled(job);
     }
 
     onProgress("Starting Steam");
-    launchSteam(steamExe);
+    launchSteam(steam);
 
     onProgress("Waiting for the sign-in page");
     session = await findPage(PROBE, 90000, () => job.cancelled);

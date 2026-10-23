@@ -251,6 +251,8 @@ const ru: Messages = {
   "backend.cancelled": "Отменено.",
   "backend.noEncryption":
     "Системное хранилище учётных данных недоступно, секреты не будут сохранены.",
+  "backend.noKeyring":
+    "Системная связка ключей (GNOME Keyring или KWallet) недоступна, поэтому пароли нельзя сохранить безопасно. Установите или разблокируйте её и перезапустите приложение.",
   "backend.accountNotFound": "Аккаунт не найден.",
   "backend.noAuthenticatorData": "Для этого аккаунта нет сохранённых данных аутентификатора.",
   "backend.usernameRequired": "Укажите логин.",

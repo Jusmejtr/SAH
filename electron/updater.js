@@ -182,8 +182,9 @@ export const checkForUpdates = async () => {
       wireAutoUpdater(updater);
 
       try {
-        await updater.checkForUpdates();
-        return status;
+        // null when the updater is inactive, e.g. Linux not run as an AppImage
+        if (await updater.checkForUpdates()) return status;
+        log("updater: auto-update is not active, checking GitHub instead");
       } catch (error) {
         log("updater: auto-update check failed:", error?.message ?? String(error));
       }

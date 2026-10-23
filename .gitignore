@@ -143,3 +143,5 @@ vite.config.ts.timestamp-*
 .vite/
 # Electron main-process build output
 dist-electron
+# electron-builder output
+release

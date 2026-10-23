@@ -1,0 +1,64 @@
+name: Release
+
+# Builds the Windows installer + portable exe and the Linux AppImage, and
+# uploads them all to one draft GitHub release for the version in
+# package.json. Run it from the Actions tab, check the draft, then publish it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Created up front so the two builds don't race to create it twice.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v$(node -p "require('./package.json').version")"
+          if gh release view "$VERSION" --json isDraft --jq .isDraft > is-draft.txt 2>/dev/null; then
+            if [ "$(cat is-draft.txt)" != "true" ]; then
+              echo "::error::$VERSION is already published. Raise the version in package.json first."
+              exit 1
+            fi
+            echo "Draft $VERSION already exists, adding to it."
+          else
+            gh release create "$VERSION" --draft --title "$VERSION" --target "$GITHUB_SHA" --generate-notes
+          fi
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            platform: --win
+          - name: Linux
+            os: ubuntu-latest
+            platform: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Build and upload
+        run: npx electron-builder ${{ matrix.platform }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

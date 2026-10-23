@@ -230,6 +230,8 @@ const fr: Messages = {
   "backend.cancelled": "Annulé.",
   "backend.noEncryption":
     "Le stockage sécurisé des identifiants du système est indisponible, les secrets ne seront pas enregistrés.",
+  "backend.noKeyring":
+    "Aucun trousseau système (GNOME Keyring ou KWallet) n'est disponible, les mots de passe ne peuvent pas être enregistrés de façon sécurisée. Installez-en ou déverrouillez-en un, puis redémarrez l'application.",
   "backend.accountNotFound": "Compte introuvable.",
   "backend.noAuthenticatorData": "Aucune donnée d'authentificateur n'est enregistrée pour ce compte.",
   "backend.usernameRequired": "Le nom d'utilisateur est obligatoire.",

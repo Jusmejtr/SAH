@@ -1,6 +1,6 @@
 {
   "name": "sah",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Steam Account Helper",
   "homepage": "https://github.com/Jusmejtr/SAH#readme",
   "bugs": {
@@ -14,12 +14,14 @@
   "author": "Jusmejtr",
   "type": "module",
   "main": "dist-electron/main.js",
+  "desktopName": "steam-account-helper.desktop",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "dist:win": "npm run build && electron-builder --win portable",
     "dist:win:installer": "npm run build && electron-builder --win nsis",
+    "dist:linux": "npm run build && electron-builder --linux AppImage",
     "release": "npm run build && electron-builder --win --publish always"
   },
   "dependencies": {
@@ -44,7 +46,10 @@
   "build": {
     "appId": "com.jusmejtr.sah",
     "productName": "Steam Account Helper",
-    "icon": "public/app-icon.svg",
+    "directories": {
+      "output": "release"
+    },
+    "icon": "build/icon.png",
     "publish": [
       {
         "provider": "github",
@@ -73,6 +78,26 @@
         }
       ]
     },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "executableName": "steam-account-helper",
+      "syncDesktopName": true,
+      "synopsis": "Sign in to your Steam accounts with one click",
+      "extraResources": [
+        {
+          "from": "build/icon.png",
+          "to": "icon.png"
+        }
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -82,6 +107,9 @@
     },
     "portable": {
       "artifactName": "Steam-Account-Helper-Portable-v${version}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "Steam-Account-Helper.${ext}"
     }
   }
 }

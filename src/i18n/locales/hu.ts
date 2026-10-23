@@ -230,6 +230,8 @@ const hu: Messages = {
   "backend.cancelled": "Megszakítva.",
   "backend.noEncryption":
     "A rendszer hitelesítőadat-tárolója nem érhető el, a titkos adatok nem lesznek elmentve.",
+  "backend.noKeyring":
+    "Nem érhető el rendszerkulcstartó (GNOME Keyring vagy KWallet), így a jelszavak nem menthetők biztonságosan. Telepíts vagy oldj fel egyet, majd indítsd újra az alkalmazást.",
   "backend.accountNotFound": "A fiók nem található.",
   "backend.noAuthenticatorData": "Ehhez a fiókhoz nincsenek mentett hitelesítőadatok.",
   "backend.usernameRequired": "A felhasználónév kötelező.",

@@ -217,6 +217,8 @@ const zh: Messages = {
 
   "backend.cancelled": "已取消。",
   "backend.noEncryption": "系统凭据存储不可用,拒绝保存密钥。",
+  "backend.noKeyring":
+    "没有可用的系统密钥环(GNOME Keyring 或 KWallet),无法安全保存密码。请安装或解锁一个,然后重启应用。",
   "backend.accountNotFound": "找不到账户。",
   "backend.noAuthenticatorData": "此账户未保存验证器数据。",
   "backend.usernameRequired": "必须填写用户名。",

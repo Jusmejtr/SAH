@@ -249,6 +249,8 @@ const en = {
   "backend.cancelled": "Cancelled.",
   "backend.noEncryption":
     "OS credential storage is unavailable, refusing to store secrets.",
+  "backend.noKeyring":
+    "No system keyring (GNOME Keyring or KWallet) is available, so passwords can't be stored securely. Install or unlock one, then restart the app.",
   "backend.accountNotFound": "Account not found.",
   "backend.noAuthenticatorData":
     "No authenticator data is stored for this account.",

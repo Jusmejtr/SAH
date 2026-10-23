@@ -231,6 +231,8 @@ const de: Messages = {
   "backend.cancelled": "Abgebrochen.",
   "backend.noEncryption":
     "Der Anmeldeinformationsspeicher des Systems ist nicht verfügbar, Secrets werden nicht gespeichert.",
+  "backend.noKeyring":
+    "Kein Systemschlüsselbund (GNOME Keyring oder KWallet) verfügbar, Passwörter können nicht sicher gespeichert werden. Installiere oder entsperre einen und starte die App neu.",
   "backend.accountNotFound": "Konto nicht gefunden.",
   "backend.noAuthenticatorData": "Für dieses Konto sind keine Authenticator-Daten gespeichert.",
   "backend.usernameRequired": "Benutzername ist erforderlich.",

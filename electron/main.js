@@ -34,12 +34,50 @@ import {
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+const isLinux = process.platform === "linux";
+
+if (isLinux) {
+  // Chromium only picks a keyring on desktops it recognises (GNOME, KDE, ...).
+  // On others (Sway, i3, Hyprland, ...) it would silently fall back to a plain
+  // fixed key, so ask for the Secret Service (GNOME Keyring, KeePassXC, ...) instead.
+  const desktop = String(process.env.XDG_CURRENT_DESKTOP ?? "").toLowerCase();
+  if (!app.commandLine.hasSwitch("password-store") && !desktop.includes("kde")) {
+    app.commandLine.appendSwitch("password-store", "gnome-libsecret");
+  }
+
+  // An AppImage can't ship the setuid sandbox helper, so on systems that also
+  // block unprivileged user namespaces (Ubuntu 24.04+) Chromium would refuse to
+  // start. The window only ever shows the app's own bundled pages.
+  const readFlag = (file) => {
+    try {
+      return fs.readFileSync(file, "utf8").trim();
+    } catch {
+      return "";
+    }
+  };
+  if (
+    process.env.APPIMAGE &&
+    (readFlag("/proc/sys/kernel/apparmor_restrict_unprivileged_userns") === "1" ||
+      readFlag("/proc/sys/kernel/unprivileged_userns_clone") === "0")
+  ) {
+    app.commandLine.appendSwitch("no-sandbox");
+  }
+}
+
+const windowIcon = () => {
+  if (!isLinux) return undefined;
+  const icon = app.isPackaged
+    ? path.join(process.resourcesPath, "icon.png")
+    : path.join(dirname, "..", "build", "icon.png");
+  return fs.existsSync(icon) ? icon : undefined;
+};
 
 const createWindow = async () => {
   const settings = getSettings();
   const win = new BrowserWindow({
     width: settings.width,
     height: settings.height,
+    icon: windowIcon(),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

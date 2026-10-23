@@ -40,6 +40,17 @@ const writeSettingsRaw = (settings) => {
 };
 
 const assertEncryptionAvailable = () => {
+  // On Linux, a missing keyring either disables encryption or makes Chromium
+  // fall back to a fixed, publicly known key. Both mean: no keyring.
+  if (
+    process.platform === "linux" &&
+    (!safeStorage.isEncryptionAvailable() ||
+      safeStorage.getSelectedStorageBackend?.() === "basic_text")
+  ) {
+    throw new Error(
+      "No system keyring (GNOME Keyring or KWallet) is available, refusing to store secrets.",
+    );
+  }
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error(
       "OS credential storage is unavailable, refusing to store secrets.",

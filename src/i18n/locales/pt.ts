@@ -232,6 +232,8 @@ const pt: Messages = {
   "backend.cancelled": "Cancelado.",
   "backend.noEncryption":
     "O armazenamento de credenciais do sistema não está disponível; os segredos não serão salvos.",
+  "backend.noKeyring":
+    "Nenhum chaveiro do sistema (GNOME Keyring ou KWallet) está disponível, então as senhas não podem ser salvas com segurança. Instale ou desbloqueie um e reinicie o aplicativo.",
   "backend.accountNotFound": "Conta não encontrada.",
   "backend.noAuthenticatorData": "Não há dados de autenticador salvos para esta conta.",
   "backend.usernameRequired": "O nome de usuário é obrigatório.",

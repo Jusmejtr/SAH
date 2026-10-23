@@ -229,6 +229,8 @@ const ja: Messages = {
   "backend.cancelled": "キャンセルしました。",
   "backend.noEncryption":
     "OS の資格情報ストレージを利用できないため、シークレットを保存できません。",
+  "backend.noKeyring":
+    "システムのキーリング (GNOME Keyring または KWallet) が利用できないため、パスワードを安全に保存できません。インストールまたはロック解除してから、アプリを再起動してください。",
   "backend.accountNotFound": "アカウントが見つかりません。",
   "backend.noAuthenticatorData": "このアカウントには認証データが保存されていません。",
   "backend.usernameRequired": "ユーザー名は必須です。",

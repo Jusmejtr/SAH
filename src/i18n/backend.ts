@@ -21,6 +21,8 @@ export const BACKEND_EXACT: Record<string, MessageKey> = {
   // electron/store.js
   "OS credential storage is unavailable, refusing to store secrets.":
     "backend.noEncryption",
+  "No system keyring (GNOME Keyring or KWallet) is available, refusing to store secrets.":
+    "backend.noKeyring",
   "Account not found.": "backend.accountNotFound",
   "No authenticator data is stored for this account.":
     "backend.noAuthenticatorData",

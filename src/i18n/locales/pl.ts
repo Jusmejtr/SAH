@@ -251,6 +251,8 @@ const pl: Messages = {
   "backend.cancelled": "Anulowano.",
   "backend.noEncryption":
     "Systemowy magazyn poświadczeń jest niedostępny, sekrety nie zostaną zapisane.",
+  "backend.noKeyring":
+    "Brak systemowego pęku kluczy (GNOME Keyring lub KWallet), więc hasła nie mogą być bezpiecznie zapisane. Zainstaluj lub odblokuj jeden z nich i uruchom aplikację ponownie.",
   "backend.accountNotFound": "Nie znaleziono konta.",
   "backend.noAuthenticatorData": "Dla tego konta nie zapisano danych uwierzytelniacza.",
   "backend.usernameRequired": "Nazwa użytkownika jest wymagana.",
