@@ -1,8 +1,5 @@
 name: Release
 
-# Builds the Windows installer + portable exe and the Linux AppImage, and
-# uploads them all to one draft GitHub release for the version in
-# package.json. Run it from the Actions tab, check the draft, then publish it.
 on:
   workflow_dispatch:
 
@@ -16,7 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Created up front so the two builds don't race to create it twice.
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
