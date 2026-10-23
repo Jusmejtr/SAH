@@ -23,6 +23,7 @@ import {
   openReleasePage,
 } from "../api";
 import type { AppSettings, UpdateStatus } from "../api";
+import { useI18n } from "../i18n";
 
 type SettingsDialogProps = {
   open: boolean;
@@ -38,6 +39,7 @@ const initialSettings = (): SettingsState => ({
 });
 
 export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<SettingsState>(initialSettings);
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
 
@@ -83,17 +85,17 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           >
             <FaCog size={17} />
           </Box>
-          <span>Settings</span>
+          <span>{t("settings.title")}</span>
         </Stack>
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
           <Typography variant="overline" color="text.secondary">
-            Window
+            {t("settings.window")}
           </Typography>
           <Stack direction="row" spacing={2}>
             <TextField
-              label="Width"
+              label={t("settings.width")}
               type="number"
               value={settings.width}
               onChange={(event) => {
@@ -103,7 +105,7 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               fullWidth
             />
             <TextField
-              label="Height"
+              label={t("settings.height")}
               type="number"
               value={settings.height}
               onChange={(event) => {
@@ -128,10 +130,10 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           >
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Start maximized
+                {t("settings.startMaximized")}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Ignore the size above and open full screen.
+                {t("settings.startMaximizedHelp")}
               </Typography>
             </Box>
             <Switch
@@ -146,45 +148,46 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           <Divider />
 
           <Typography variant="overline" color="text.secondary">
-            Updates
+            {t("settings.updates")}
           </Typography>
           <UpdateSection status={update} />
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} color="inherit" sx={{ color: "text.secondary" }}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button variant="contained" onClick={() => void handleSave()}>
-          Save changes
+          {t("common.saveChanges")}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-const UPDATE_LABELS: Record<UpdateStatus["state"], string> = {
-  idle: "",
-  checking: "Checking for updates…",
-  "up-to-date": "You are on the latest version.",
-  available: "A new version is available.",
-  downloading: "Downloading the update…",
-  downloaded: "Update downloaded and ready to install.",
-  error: "",
-};
-
 function UpdateSection({ status }: { status: UpdateStatus | null }) {
+  const { t, tm } = useI18n();
   const state = status?.state ?? "idle";
   const busy = state === "checking" || state === "downloading";
+  const version = status?.version ?? "";
 
   const detail =
     state === "error"
-      ? status?.error || "Could not check for updates."
-      : state === "downloading"
-        ? `Downloading v${status?.version} — ${status?.percent ?? 0}%`
-        : state === "available" || state === "downloaded"
-          ? `${UPDATE_LABELS[state]} (v${status?.version})`
-          : UPDATE_LABELS[state];
+      ? tm(status?.error) || t("update.checkFailed")
+      : state === "checking"
+        ? t("update.checking")
+        : state === "up-to-date"
+          ? t("update.upToDate")
+          : state === "downloading"
+            ? t("update.downloading", {
+                version,
+                percent: status?.percent ?? 0,
+              })
+            : state === "available"
+              ? t("update.available", { version })
+              : state === "downloaded"
+                ? t("update.downloaded", { version })
+                : "";
 
   return (
     <Stack
@@ -201,19 +204,19 @@ function UpdateSection({ status }: { status: UpdateStatus | null }) {
     >
       <Box sx={{ minWidth: 0 }}>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          Version {status?.currentVersion || "—"}
+          {t("settings.version", { version: status?.currentVersion || "—" })}
         </Typography>
         <Typography
           variant="caption"
           color={state === "error" ? "error.main" : "text.secondary"}
         >
-          {detail || "Updates are checked automatically."}
+          {detail || t("update.autoCheck")}
         </Typography>
       </Box>
 
       {state === "downloaded" ? (
         <Button size="small" variant="contained" onClick={() => void installUpdate()}>
-          Restart &amp; install
+          {t("common.restartInstall")}
         </Button>
       ) : state === "available" ? (
         <Button
@@ -221,7 +224,7 @@ function UpdateSection({ status }: { status: UpdateStatus | null }) {
           variant="contained"
           onClick={() => void openReleasePage()}
         >
-          Download
+          {t("common.download")}
         </Button>
       ) : (
         <Button
@@ -232,7 +235,7 @@ function UpdateSection({ status }: { status: UpdateStatus | null }) {
           onClick={() => void checkForUpdates()}
           startIcon={busy ? <CircularProgress size={13} color="inherit" /> : undefined}
         >
-          Check now
+          {t("update.checkNow")}
         </Button>
       )}
     </Stack>

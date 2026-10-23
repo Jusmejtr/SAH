@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { FaPlus, FaShieldAlt, FaUserPlus } from "react-icons/fa";
 import type { AddOptions, NewAccount } from "../../api";
+import { useI18n } from "../../i18n";
 
 type FormState = NewAccount;
 type Mode = "secret" | "setup";
@@ -32,6 +33,7 @@ const initialForm: FormState = {
 };
 
 export default function AddDialog({ onAdd }: AddDialogProps) {
+  const { t, tm } = useI18n();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("secret");
   const [form, setForm] = useState<FormState>(initialForm);
@@ -77,7 +79,7 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
         onClick={() => setOpen(true)}
         startIcon={<FaPlus size={12} />}
       >
-        Add account
+        {t("add.button")}
       </Button>
       <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
         <DialogTitle>
@@ -95,13 +97,13 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
             >
               <FaUserPlus size={17} />
             </Box>
-            <span>Add Steam account</span>
+            <span>{t("add.title")}</span>
           </Stack>
         </DialogTitle>
         <DialogContent>
           <form id="add-steam-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {error && <Alert severity="error">{error}</Alert>}
+              {error && <Alert severity="error">{tm(error)}</Alert>}
 
               <Tabs
                 value={mode}
@@ -111,8 +113,8 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                 }}
                 variant="fullWidth"
               >
-                <Tab value="secret" label="Shared secret" />
-                <Tab value="setup" label="Set up Steam Guard" />
+                <Tab value="secret" label={t("common.sharedSecret")} />
+                <Tab value="setup" label={t("setup.title")} />
               </Tabs>
 
               {setup && (
@@ -121,14 +123,12 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                   icon={<FaShieldAlt size={16} />}
                   sx={{ alignItems: "center" }}
                 >
-                  Only the username and password are needed. After adding,
-                  the app signs in and sets up a Steam Guard Mobile
-                  Authenticator for the account.
+                  {t("add.setupInfo")}
                 </Alert>
               )}
 
               <TextField
-                label="Username"
+                label={t("common.username")}
                 value={form.username}
                 onChange={handleChange("username")}
                 required
@@ -136,7 +136,7 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
                 autoFocus
               />
               <TextField
-                label="Password"
+                label={t("common.password")}
                 type="password"
                 value={form.password}
                 onChange={handleChange("password")}
@@ -145,20 +145,20 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
               />
               {!setup && (
                 <TextField
-                  label="Shared secret"
+                  label={t("common.sharedSecret")}
                   type="password"
                   value={form.sharedSecret}
                   onChange={handleChange("sharedSecret")}
                   fullWidth
-                  helperText="Used to generate Steam Guard codes. Leave empty if the account has no mobile authenticator."
+                  helperText={t("add.sharedSecretHelp")}
                 />
               )}
               <TextField
-                label="Display name"
+                label={t("common.displayName")}
                 value={form.displayName}
                 onChange={handleChange("displayName")}
                 fullWidth
-                helperText="Optional label shown on the account card."
+                helperText={t("common.displayNameHelp")}
               />
             </Stack>
           </form>
@@ -170,7 +170,7 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
             color="inherit"
             sx={{ color: "text.secondary" }}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="contained"
@@ -187,7 +187,11 @@ export default function AddDialog({ onAdd }: AddDialogProps) {
               )
             }
           >
-            {saving ? "Adding…" : setup ? "Add & set up" : "Add account"}
+            {saving
+              ? t("add.adding")
+              : setup
+                ? t("add.addAndSetup")
+                : t("add.button")}
           </Button>
         </DialogActions>
       </Dialog>

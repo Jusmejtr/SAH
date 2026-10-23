@@ -33,6 +33,8 @@ import {
   submitGuardEmailCode,
 } from "../api";
 import type { Account, GuardSetupStep } from "../api";
+import { useI18n } from "../i18n";
+import type { TranslationKey } from "../i18n";
 
 type SetupGuardDialogProps = {
   account: Account | null;
@@ -42,7 +44,7 @@ type SetupGuardDialogProps = {
 
 type Phase =
   | { name: "intro" }
-  | { name: "working"; label: string }
+  | { name: "working"; label: TranslationKey }
   | { name: "email-code"; domain: string; error: string }
   | {
       name: "activation";
@@ -55,12 +57,6 @@ type Phase =
 
 const CODE_FONT =
   '"Cascadia Mono", "Consolas", "SFMono-Regular", ui-monospace, monospace';
-
-const cleanError = (err: unknown) =>
-  String((err as Error)?.message ?? err).replace(
-    /^Error invoking remote method '[^']+': (Error: )?/,
-    "",
-  );
 
 const toPhase = (result: GuardSetupStep): Phase => {
   switch (result.step) {
@@ -85,6 +81,7 @@ export default function SetupGuardDialog({
   onClose,
   onCompleted,
 }: SetupGuardDialogProps) {
+  const { t, tm } = useI18n();
   const [phase, setPhase] = useState<Phase>({ name: "intro" });
   const [emailCode, setEmailCode] = useState("");
   const [activationCode, setActivationCode] = useState("");
@@ -110,7 +107,7 @@ export default function SetupGuardDialog({
     setMaFileNote("");
   }, [accountId]);
 
-  const call = async (label: string, request: () => Promise<GuardSetupStep>) => {
+  const call = async (label: TranslationKey, request: () => Promise<GuardSetupStep>) => {
     const id = run.current;
     setPhase({ name: "working", label });
     try {
@@ -120,7 +117,7 @@ export default function SetupGuardDialog({
       setPhase(toPhase(result));
     } catch (err) {
       if (id !== run.current) return;
-      setPhase({ name: "error", message: cleanError(err) });
+      setPhase({ name: "error", message: tm(err) });
     }
   };
 
@@ -128,7 +125,7 @@ export default function SetupGuardDialog({
     setEmailCode("");
     setActivationCode("");
     setSavedRevocation(false);
-    void call("Signing in to Steam…", () => startGuardSetup(accountId));
+    void call("setup.signingIn", () => startGuardSetup(accountId));
   };
 
   const submitEmail = (event?: Event) => {
@@ -136,14 +133,14 @@ export default function SetupGuardDialog({
     if (!emailCode.trim()) return;
     const code = emailCode;
     setEmailCode("");
-    void call("Checking the code…", () => submitGuardEmailCode(code));
+    void call("setup.checkingCode", () => submitGuardEmailCode(code));
   };
 
   const activate = (event?: Event) => {
     event?.preventDefault();
     if (!activationCode.trim() || !savedRevocation) return;
     const code = activationCode;
-    void call("Activating the authenticator…", () => finalizeGuardSetup(code));
+    void call("setup.activating", () => finalizeGuardSetup(code));
   };
 
   const busy = phase.name === "working";
@@ -170,9 +167,11 @@ export default function SetupGuardDialog({
     if (!shown) return;
     try {
       const result = await exportMaFile(shown.id);
-      if (!result.cancelled) setMaFileNote(`Saved to ${result.filePath}`);
+      if (!result.cancelled) {
+        setMaFileNote(t("setup.savedTo", { path: result.filePath }));
+      }
     } catch (err) {
-      setMaFileNote(cleanError(err));
+      setMaFileNote(tm(err));
     }
   };
 
@@ -210,7 +209,7 @@ export default function SetupGuardDialog({
               component="div"
               sx={{ fontWeight: 700, fontSize: "1.05rem", lineHeight: 1.25 }}
             >
-              Set up Steam Guard
+              {t("setup.title")}
             </Typography>
             <Typography
               component="div"
@@ -228,25 +227,11 @@ export default function SetupGuardDialog({
       <DialogContent>
         {phase.name === "intro" && (
           <Stack spacing={1.5}>
-            <Typography variant="body2">
-              This signs in to the account with its saved password and adds a
-              Steam Guard Mobile Authenticator, the same way the Steam mobile
-              app does. Afterwards the codes are generated here.
-            </Typography>
+            <Typography variant="body2">{t("setup.intro")}</Typography>
             <Box component="ul" sx={{ m: 0, pl: 2.5, typography: "body2" }}>
-              <li>
-                Have the account's email open. Steam may send a sign-in code,
-                and sends the activation code there (or by SMS if a phone is
-                linked).
-              </li>
-              <li>
-                You will get a revocation code. Write it down, it is the only
-                way to remove the authenticator if you lose this app's data.
-              </li>
-              <li>
-                The Steam mobile app can't be the authenticator for this account
-                at the same time.
-              </li>
+              <li>{t("setup.introEmail")}</li>
+              <li>{t("setup.introRevocation")}</li>
+              <li>{t("setup.introMobileApp")}</li>
             </Box>
           </Stack>
         )}
@@ -255,7 +240,7 @@ export default function SetupGuardDialog({
           <Stack spacing={2} sx={{ alignItems: "center", py: 4 }}>
             <CircularProgress size={34} thickness={4} />
             <Typography variant="body2" color="text.secondary">
-              {phase.label}
+              {t(phase.label)}
             </Typography>
           </Stack>
         )}
@@ -264,13 +249,15 @@ export default function SetupGuardDialog({
           <Box component="form" id="guard-email-form" onSubmit={submitEmail}>
             <Stack spacing={2} sx={{ mt: 0.5 }}>
               <Typography variant="body2">
-                Steam sent a sign-in code to the account's email
-                {phase.domain ? ` (…@${phase.domain})` : ""}. Enter it to
-                continue.
+                {phase.domain
+                  ? t("setup.emailSentDomain", { domain: phase.domain })
+                  : t("setup.emailSent")}
               </Typography>
-              {phase.error && <Alert severity="warning">{phase.error}</Alert>}
+              {phase.error && (
+                <Alert severity="warning">{tm(phase.error)}</Alert>
+              )}
               <TextField
-                label="Code from email"
+                label={t("setup.emailCodeLabel")}
                 value={emailCode}
                 onChange={(event: any) =>
                   setEmailCode(String(event.target.value).toUpperCase())
@@ -294,7 +281,7 @@ export default function SetupGuardDialog({
             <Stack spacing={2} sx={{ mt: 0.5 }}>
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  1. Save your revocation code
+                  {t("setup.step1")}
                 </Typography>
                 <Stack
                   direction="row"
@@ -321,10 +308,12 @@ export default function SetupGuardDialog({
                   >
                     {phase.revocationCode}
                   </Typography>
-                  <Tooltip title={revocationCopied ? "Copied" : "Copy"}>
+                  <Tooltip
+                    title={revocationCopied ? t("common.copied") : t("common.copy")}
+                  >
                     <IconButton
                       size="small"
-                      aria-label="Copy revocation code"
+                      aria-label={t("setup.copyRevocation")}
                       onClick={() => void copyRevocation(phase.revocationCode)}
                     >
                       {revocationCopied ? (
@@ -340,8 +329,7 @@ export default function SetupGuardDialog({
                   color="text.secondary"
                   sx={{ display: "block", mt: 0.75 }}
                 >
-                  You need it to remove the authenticator if you ever lose
-                  access to this app or this computer.
+                  {t("setup.revocationHelp")}
                 </Typography>
                 <FormControlLabel
                   sx={{ mt: 0.5 }}
@@ -352,27 +340,27 @@ export default function SetupGuardDialog({
                       onChange={(_event, checked) => setSavedRevocation(checked)}
                     />
                   }
-                  label="I wrote down the revocation code"
+                  label={t("setup.revocationConfirm")}
                   slotProps={{ typography: { variant: "body2" } }}
                 />
               </Box>
 
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  2. Enter the activation code
+                  {t("setup.step2")}
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1.5 }}>
                   {phase.phoneHint
-                    ? `Steam sent it by SMS to the phone ending in ${phase.phoneHint}.`
-                    : "Steam sent it to the account's email."}
+                    ? t("setup.sentBySms", { phone: phase.phoneHint })
+                    : t("setup.sentByEmail")}
                 </Typography>
                 {phase.error && (
                   <Alert severity="error" sx={{ mb: 1.5 }}>
-                    {phase.error}
+                    {tm(phase.error)}
                   </Alert>
                 )}
                 <TextField
-                  label="Activation code"
+                  label={t("setup.activationLabel")}
                   value={activationCode}
                   onChange={(event: any) =>
                     setActivationCode(String(event.target.value).toUpperCase())
@@ -395,11 +383,9 @@ export default function SetupGuardDialog({
             <Box sx={{ color: "success.main" }}>
               <FaCheckCircle size={40} />
             </Box>
-            <Typography variant="h6">Steam Guard is on</Typography>
+            <Typography variant="h6">{t("setup.doneTitle")}</Typography>
             <Typography variant="body2" color="text.secondary">
-              Codes for this account are now generated by Steam Account Helper.
-              Save a maFile backup somewhere safe. It holds the secrets and the
-              revocation code, and other tools can import it.
+              {t("setup.doneBody")}
             </Typography>
             {maFileNote && (
               <Typography variant="caption" color="text.secondary">
@@ -415,7 +401,7 @@ export default function SetupGuardDialog({
             variant="outlined"
             sx={{ whiteSpace: "pre-line" }}
           >
-            {phase.message}
+            {tm(phase.message)}
           </Alert>
         )}
       </DialogContent>
@@ -427,10 +413,10 @@ export default function SetupGuardDialog({
               startIcon={<FaDownload size={12} />}
               onClick={() => void saveMaFile()}
             >
-              Save maFile backup
+              {t("setup.saveMaFileBackup")}
             </Button>
             <Button variant="contained" onClick={close}>
-              Done
+              {t("common.done")}
             </Button>
           </>
         ) : (
@@ -440,16 +426,16 @@ export default function SetupGuardDialog({
               onClick={close}
               sx={{ color: "text.secondary" }}
             >
-              {phase.name === "error" ? "Close" : "Cancel"}
+              {phase.name === "error" ? t("common.close") : t("common.cancel")}
             </Button>
             {phase.name === "intro" && (
               <Button variant="contained" onClick={start} autoFocus>
-                Start
+                {t("setup.start")}
               </Button>
             )}
             {phase.name === "error" && (
               <Button variant="contained" onClick={start}>
-                Try again
+                {t("setup.tryAgain")}
               </Button>
             )}
             {phase.name === "email-code" && (
@@ -459,7 +445,7 @@ export default function SetupGuardDialog({
                 form="guard-email-form"
                 disabled={!emailCode.trim()}
               >
-                Continue
+                {t("setup.continue")}
               </Button>
             )}
             {phase.name === "activation" && (
@@ -469,12 +455,12 @@ export default function SetupGuardDialog({
                 form="guard-activate-form"
                 disabled={!activationCode.trim() || !savedRevocation}
               >
-                Activate
+                {t("setup.activate")}
               </Button>
             )}
             {busy && (
               <Button variant="contained" disabled>
-                Working…
+                {t("common.working")}
               </Button>
             )}
           </>

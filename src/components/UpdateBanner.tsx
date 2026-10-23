@@ -11,6 +11,7 @@ import {
 import { FaArrowUp, FaTimes } from "react-icons/fa";
 import { installUpdate, openReleasePage } from "../api";
 import type { UpdateStatus } from "../api";
+import { useI18n } from "../i18n";
 
 type UpdateBannerProps = {
   status: UpdateStatus | null;
@@ -23,19 +24,27 @@ export default function UpdateBanner({
   dismissed,
   onDismiss,
 }: UpdateBannerProps) {
+  const { t } = useI18n();
   const state = status?.state;
   const relevant =
     state === "available" || state === "downloading" || state === "downloaded";
   const open = Boolean(relevant) && !dismissed;
 
-  const version = status?.version ? `v${status.version}` : "A new version";
+  const version = status?.version ?? "";
+  const percent = status?.percent ?? 0;
 
   const message =
     state === "downloaded"
-      ? `${version} is ready to install.`
+      ? version
+        ? t("update.bannerReady", { version })
+        : t("update.bannerReadyGeneric")
       : state === "downloading"
-        ? `Downloading ${version}… ${status?.percent ?? 0}%`
-        : `${version} is available.`;
+        ? version
+          ? t("update.bannerDownloading", { version, percent })
+          : t("update.bannerDownloadingGeneric", { percent })
+        : version
+          ? t("update.bannerAvailable", { version })
+          : t("update.bannerAvailableGeneric");
 
   return (
     <Collapse in={open}>
@@ -74,7 +83,7 @@ export default function UpdateBanner({
               variant="contained"
               onClick={() => void installUpdate()}
             >
-              Restart &amp; install
+              {t("common.restartInstall")}
             </Button>
           )}
           {state === "available" && (
@@ -83,10 +92,10 @@ export default function UpdateBanner({
               variant="contained"
               onClick={() => void openReleasePage()}
             >
-              Download
+              {t("common.download")}
             </Button>
           )}
-          <IconButton size="small" aria-label="dismiss update" onClick={onDismiss}>
+          <IconButton size="small" aria-label={t("update.dismiss")} onClick={onDismiss}>
             <FaTimes size={12} />
           </IconButton>
         </Stack>

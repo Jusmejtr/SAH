@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { FaFileExport } from "react-icons/fa";
 import type { ExportLayout, ExportOptions, ExportResult } from "../../api";
+import { useI18n } from "../../i18n";
 
 type ExportDialogProps = {
   onExport: (options: ExportOptions) => Promise<ExportResult>;
@@ -22,12 +23,32 @@ type ExportDialogProps = {
 
 const DEFAULT_DELIMITER = ":";
 
+const COLUMN_KEYS = {
+  username: "column.username",
+  password: "column.password",
+  sharedSecret: "column.sharedSecret",
+  displayName: "column.displayName",
+} as const;
+
+const LAYOUTS: ExportLayout[] = [
+  "username,password,sharedSecret",
+  "password,username,sharedSecret",
+  "username,password,sharedSecret,displayName",
+  "password,username,sharedSecret,displayName",
+];
+
 const readEventValue = (event: unknown) => {
   const target = (event as { target?: { value?: string } })?.target;
   return target?.value ?? "";
 };
 
 export default function ExportDialog({ onExport }: ExportDialogProps) {
+  const { t, tm } = useI18n();
+  const columnLabel = (layout: ExportLayout) =>
+    layout
+      .split(",")
+      .map((column) => t(COLUMN_KEYS[column as keyof typeof COLUMN_KEYS]))
+      .join(", ");
   const [open, setOpen] = useState(false);
   const [layout, setLayout] = useState<ExportLayout>(
     "username,password,sharedSecret",
@@ -55,7 +76,7 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
 
     try {
       if (!effectiveDelimiter) {
-        throw new Error("Select a delimiter.");
+        throw new Error(t("common.selectDelimiter"));
       }
 
       const result = await onExport({
@@ -81,7 +102,7 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
         onClick={() => setOpen(true)}
         startIcon={<FaFileExport size={12} />}
       >
-        Export
+        {t("common.export")}
       </Button>
       <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
         <DialogTitle>
@@ -99,63 +120,55 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
             >
               <FaFileExport size={16} />
             </Box>
-            <span>Export accounts</span>
+            <span>{t("export.title")}</span>
           </Stack>
         </DialogTitle>
         <DialogContent>
           <form id="export-accounts-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {error && <Alert severity="error">{error}</Alert>}
+              {error && <Alert severity="error">{tm(error)}</Alert>}
 
               <Alert severity="warning" variant="outlined">
-                The exported file contains plain-text passwords and shared
-                secrets. Store it somewhere safe.
+                {t("export.warning")}
               </Alert>
 
               <TextField
                 select
-                label="Delimiter"
+                label={t("common.delimiter")}
                 value={delimiter}
                 onChange={(event) => setDelimiter(readEventValue(event))}
                 fullWidth
               >
-                <MenuItem value=":">Colon (:)</MenuItem>
-                <MenuItem value=";">Semicolon (;)</MenuItem>
-                <MenuItem value=",">Comma (,)</MenuItem>
-                <MenuItem value="|">Pipe (|)</MenuItem>
-                <MenuItem value="\t">Tab</MenuItem>
-                <MenuItem value="custom">Custom</MenuItem>
+                <MenuItem value=":">{t("common.delimiterColon")}</MenuItem>
+                <MenuItem value=";">{t("common.delimiterSemicolon")}</MenuItem>
+                <MenuItem value=",">{t("common.delimiterComma")}</MenuItem>
+                <MenuItem value="|">{t("common.delimiterPipe")}</MenuItem>
+                <MenuItem value="\t">{t("common.delimiterTab")}</MenuItem>
+                <MenuItem value="custom">{t("common.delimiterCustom")}</MenuItem>
               </TextField>
 
               {delimiter === "custom" && (
                 <TextField
-                  label="Custom Delimiter"
+                  label={t("common.customDelimiter")}
                   value={customDelimiter}
                   onChange={(event) => setCustomDelimiter(readEventValue(event))}
-                  helperText="Use a single character, e.g. #"
+                  helperText={t("common.customDelimiterHelp")}
                   fullWidth
                 />
               )}
 
               <TextField
                 select
-                label="Column Order"
+                label={t("common.columnOrder")}
                 value={layout}
                 onChange={(event) => setLayout(readEventValue(event) as ExportLayout)}
                 fullWidth
               >
-                <MenuItem value="username,password,sharedSecret">
-                  username, password, sharedSecret
-                </MenuItem>
-                <MenuItem value="password,username,sharedSecret">
-                  password, username, sharedSecret
-                </MenuItem>
-                <MenuItem value="username,password,sharedSecret,displayName">
-                  username, password, sharedSecret, displayName
-                </MenuItem>
-                <MenuItem value="password,username,sharedSecret,displayName">
-                  password, username, sharedSecret, displayName
-                </MenuItem>
+                {LAYOUTS.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {columnLabel(option)}
+                  </MenuItem>
+                ))}
               </TextField>
             </Stack>
           </form>
@@ -167,7 +180,7 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
             color="inherit"
             sx={{ color: "text.secondary" }}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="contained"
@@ -182,7 +195,7 @@ export default function ExportDialog({ onExport }: ExportDialogProps) {
               )
             }
           >
-            {saving ? "Exporting…" : "Export"}
+            {saving ? t("export.exporting") : t("common.export")}
           </Button>
         </DialogActions>
       </Dialog>

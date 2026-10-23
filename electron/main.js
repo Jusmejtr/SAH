@@ -23,6 +23,7 @@ import {
 } from "./steam/authenticator.js";
 import { CancelledError } from "./errors.js";
 import { log, openLog } from "./log.js";
+import { setLanguage, tr } from "./i18n.js";
 import {
   checkForUpdates,
   getUpdateStatus,
@@ -94,7 +95,7 @@ app.whenReady().then(() => {
     const data = getAuthenticator(id);
     const hostWindow = BrowserWindow.fromWebContents(event.sender);
     const { canceled, filePath } = await dialog.showSaveDialog(hostWindow ?? undefined, {
-      title: "Save maFile",
+      title: tr("saveMaFile"),
       defaultPath: `${data.account_name || "account"}.maFile`,
       filters: [{ name: "maFile", extensions: ["maFile"] }],
     });
@@ -114,9 +115,9 @@ app.whenReady().then(() => {
   ipcMain.handle("accounts:export", async (event, options) => {
     const hostWindow = BrowserWindow.fromWebContents(event.sender);
     const { canceled, filePath } = await dialog.showSaveDialog(hostWindow ?? undefined, {
-      title: "Export Accounts",
+      title: tr("exportAccounts"),
       defaultPath: "steam-accounts-export.txt",
-      filters: [{ name: "Text Files", extensions: ["txt"] }],
+      filters: [{ name: tr("textFiles"), extensions: ["txt"] }],
     });
 
     if (canceled || !filePath) {
@@ -152,6 +153,7 @@ app.whenReady().then(() => {
   ipcMain.handle("settings:get", () => getSettings());
   ipcMain.handle("settings:set", (_event, settings) => setSettings(settings));
   ipcMain.handle("app:version", () => app.getVersion());
+  ipcMain.handle("app:set-language", (_event, language) => setLanguage(language));
   ipcMain.handle("update:status", () => getUpdateStatus());
   ipcMain.handle("update:check", () => checkForUpdates());
   ipcMain.handle("update:install", () => installUpdate());

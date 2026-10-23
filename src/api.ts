@@ -120,6 +120,7 @@ type SahApi = {
   installUpdate: () => Promise<boolean>;
   openReleasePage: () => Promise<string>;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
+  setLanguage?: (language: string) => Promise<boolean>;
 };
 
 declare global {

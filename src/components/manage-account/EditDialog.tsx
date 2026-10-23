@@ -15,6 +15,7 @@ import {
 import { FaSave, FaUserEdit } from "react-icons/fa";
 import { getAccountSecrets } from "../../api";
 import type { Account, AccountUpdate } from "../../api";
+import { useI18n } from "../../i18n";
 
 type EditDialogProps = {
   account: Account | null;
@@ -34,6 +35,7 @@ export default function EditDialog({
   onClose,
   onSave,
 }: EditDialogProps) {
+  const { t, tm } = useI18n();
   const [form, setForm] = useState<AccountUpdate>(emptyForm);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -114,15 +116,15 @@ export default function EditDialog({
           >
             <FaUserEdit size={17} />
           </Box>
-          <span>Edit account</span>
+          <span>{t("edit.title")}</span>
         </Stack>
       </DialogTitle>
       <DialogContent>
         <form id="edit-steam-form" onSubmit={handleSubmit}>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && <Alert severity="error">{tm(error)}</Alert>}
             <TextField
-              label="Username"
+              label={t("common.username")}
               value={form.username}
               onChange={handleChange("username")}
               required
@@ -131,30 +133,30 @@ export default function EditDialog({
               disabled={loading}
             />
             <TextField
-              label="Password"
+              label={t("common.password")}
               type="password"
               value={form.password}
               onChange={handleChange("password")}
               fullWidth
               disabled={loading}
-              helperText="Leave empty to keep the current password."
+              helperText={t("edit.passwordHelp")}
             />
             <TextField
-              label="Shared secret"
+              label={t("common.sharedSecret")}
               type="password"
               value={form.sharedSecret}
               onChange={handleChange("sharedSecret")}
               fullWidth
               disabled={loading}
-              helperText="Leave empty to keep the current shared secret."
+              helperText={t("edit.sharedSecretHelp")}
             />
             <TextField
-              label="Display name"
+              label={t("common.displayName")}
               value={form.displayName}
               onChange={handleChange("displayName")}
               fullWidth
               disabled={loading}
-              helperText="Optional label shown on the account card."
+              helperText={t("common.displayNameHelp")}
             />
           </Stack>
         </form>
@@ -166,7 +168,7 @@ export default function EditDialog({
           color="inherit"
           sx={{ color: "text.secondary" }}
         >
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           variant="contained"
@@ -181,7 +183,7 @@ export default function EditDialog({
             )
           }
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t("common.saving") : t("common.saveChanges")}
         </Button>
       </DialogActions>
     </Dialog>

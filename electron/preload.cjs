@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("sah", {
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   installUpdate: () => ipcRenderer.invoke("update:install"),
   openReleasePage: () => ipcRenderer.invoke("update:open-page"),
+  setLanguage: (language) => ipcRenderer.invoke("app:set-language", language),
   onUpdateStatus: (callback) => {
     const listener = (_event, status) => callback(status);
     ipcRenderer.on("update:status", listener);

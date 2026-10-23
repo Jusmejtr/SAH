@@ -24,6 +24,7 @@ import Footer from "./components/Footer";
 import UpdateBanner from "./components/UpdateBanner";
 import { COLOR_MODE_KEY, createAppTheme } from "./theme";
 import type { ColorMode } from "./theme";
+import { I18nProvider, useI18n } from "./i18n";
 import {
   addAccount,
   cancelLogin,
@@ -48,12 +49,11 @@ import type {
 } from "./api";
 
 const LOGIN_MESSAGES = {
-  "signed-in": "Credentials and Steam Guard code submitted.",
-  "auto-login": "Steam resumed the saved session for this account.",
-  launched:
-    "Credentials submitted. No shared secret stored, enter the code manually.",
-  "code-copied": "Steam started. Guard code copied to the clipboard.",
-  cancelled: "Login cancelled.",
+  "signed-in": "app.loginSignedIn",
+  "auto-login": "app.loginAutoLogin",
+  launched: "app.loginLaunched",
+  "code-copied": "app.loginCodeCopied",
+  cancelled: "app.loginCancelled",
 } as const;
 
 const readInitialMode = (): ColorMode => {
@@ -65,6 +65,7 @@ const readInitialMode = (): ColorMode => {
 };
 
 export function App() {
+  const { t, tm } = useI18n();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -123,7 +124,7 @@ export function App() {
     setError("");
     try {
       const result = await exportMaFile(account.id);
-      if (!result.cancelled) setStatus("maFile saved.");
+      if (!result.cancelled) setStatus(t("app.maFileSaved"));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -134,7 +135,7 @@ export function App() {
     setAccounts((prev) =>
       prev.map((item) => (item.id === id ? updated : item)),
     );
-    setStatus("Account updated.");
+    setStatus(t("app.accountUpdated"));
   };
 
   const handleDeleteOne = async () => {
@@ -146,7 +147,7 @@ export function App() {
 
     try {
       setAccounts(await removeAccount(target.id));
-      setStatus("Account deleted.");
+      setStatus(t("app.accountDeleted"));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -154,7 +155,7 @@ export function App() {
 
   const handleImport = async (items: NewAccount[]) => {
     if (items.length === 0) {
-      throw new Error("No accounts to import.");
+      throw new Error(t("app.noAccountsToImport"));
     }
 
     setError("");
@@ -168,13 +169,13 @@ export function App() {
         const next = await addAccount(account);
         created.push(next);
       } catch (err) {
-        failures.push((err as Error).message);
+        failures.push(tm(err));
       }
     }
 
     if (created.length > 0) {
       setAccounts((prev) => [...prev, ...created]);
-      setStatus(`Imported ${created.length} account(s).`);
+      setStatus(t("app.imported", { count: created.length }));
     }
 
     if (failures.length > 0) {
@@ -182,7 +183,10 @@ export function App() {
 
       if (created.length > 0) {
         setError(
-          `Skipped ${failures.length} account(s) during import. First error: ${firstFailure}`,
+          t("app.importSkipped", {
+            count: failures.length,
+            error: firstFailure,
+          }),
         );
         return;
       }
@@ -210,7 +214,7 @@ export function App() {
 
     try {
       const result = await loginAccount(id);
-      setStatus(LOGIN_MESSAGES[result.status]);
+      setStatus(t(LOGIN_MESSAGES[result.status]));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -306,28 +310,28 @@ export function App() {
                 <IconButton
                   size="small"
                   color="inherit"
-                  aria-label="dismiss error"
+                  aria-label={t("app.dismissError")}
                   onClick={() => setError("")}
                 >
                   <FaTimes size={12} />
                 </IconButton>
               }
             >
-              {error}
+              {tm(error)}
             </Alert>
           </Collapse>
 
           {accounts.length === 0 ? (
             <EmptyState
               icon={<FaUserPlus size={26} />}
-              title="No accounts yet"
-              subtitle="Add an account or import a list to get started."
+              title={t("app.emptyTitle")}
+              subtitle={t("app.emptySubtitle")}
             />
           ) : visibleAccounts.length === 0 ? (
             <EmptyState
               icon={<FaSearch size={22} />}
-              title="No matches"
-              subtitle={`Nothing found for “${query}”.`}
+              title={t("app.noMatchesTitle")}
+              subtitle={t("app.noMatchesSubtitle", { query })}
             />
           ) : (
             <Fade in>
@@ -377,7 +381,7 @@ export function App() {
         </Snackbar>
 
         <Footer
-          step={step}
+          step={tm(step)}
           busy={Boolean(loggingInId)}
           onCancel={() => {
             void cancelLogin();
@@ -412,7 +416,7 @@ export function App() {
           }
           warning={
             deletingAccount?.hasAuthenticator
-              ? "Its Steam Guard authenticator was set up here. Save the maFile first (right-click → Save maFile…), or you will need the revocation code to sign in."
+              ? t("app.deleteAuthenticatorWarning")
               : ""
           }
           onClose={() => setDeletingAccount(null)}
@@ -469,4 +473,9 @@ function EmptyState({
   );
 }
 
-render(<App />, document.getElementById("app")!);
+render(
+  <I18nProvider>
+    <App />
+  </I18nProvider>,
+  document.getElementById("app")!,
+);

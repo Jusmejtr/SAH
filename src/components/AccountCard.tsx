@@ -21,6 +21,7 @@ import {
   FaTrashAlt,
 } from "react-icons/fa";
 import type { Account } from "../api";
+import { useI18n } from "../i18n";
 
 type AccountCardProps = {
   account: Account;
@@ -65,6 +66,7 @@ export default function AccountCard({
   onSetupGuard,
   onExportMaFile,
 }: AccountCardProps) {
+  const { t } = useI18n();
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
@@ -151,11 +153,11 @@ export default function AccountCard({
       )}
 
       {account.hasSharedSecret && !manageMode && !busy && (
-        <Tooltip title="Steam Guard code" placement="top">
+        <Tooltip title={t("guard.title")} placement="top">
           <IconButton
             className="sah-card-action"
             size="small"
-            aria-label="Show Steam Guard code"
+            aria-label={t("card.showGuardCode")}
             onClick={(event) => {
               event.stopPropagation();
               onShowGuard(account);
@@ -184,7 +186,7 @@ export default function AccountCard({
         <>
           <CircularProgress size={34} thickness={4} />
           <Typography variant="caption" color="text.secondary">
-            Signing in…
+            {t("card.signingIn")}
           </Typography>
         </>
       ) : (
@@ -245,7 +247,7 @@ export default function AccountCard({
           <ListItemIcon>
             <FaShieldAlt size={13} />
           </ListItemIcon>
-          <ListItemText>Steam Guard code</ListItemText>
+          <ListItemText>{t("guard.title")}</ListItemText>
         </MenuItem>
       ) : (
         <MenuItem
@@ -257,7 +259,7 @@ export default function AccountCard({
           <ListItemIcon>
             <FaPlusCircle size={13} />
           </ListItemIcon>
-          <ListItemText>Set up Steam Guard…</ListItemText>
+          <ListItemText>{t("card.setupGuard")}</ListItemText>
         </MenuItem>
       )}
       {account.hasAuthenticator && (
@@ -270,7 +272,7 @@ export default function AccountCard({
           <ListItemIcon>
             <FaDownload size={13} />
           </ListItemIcon>
-          <ListItemText>Save maFile…</ListItemText>
+          <ListItemText>{t("card.saveMaFile")}</ListItemText>
         </MenuItem>
       )}
       <MenuItem
@@ -282,7 +284,7 @@ export default function AccountCard({
         <ListItemIcon>
           <FaPen size={13} />
         </ListItemIcon>
-        <ListItemText>Edit</ListItemText>
+        <ListItemText>{t("common.edit")}</ListItemText>
       </MenuItem>
       <MenuItem
         onClick={() => {
@@ -294,7 +296,7 @@ export default function AccountCard({
         <ListItemIcon sx={{ color: "error.main" }}>
           <FaTrashAlt size={13} />
         </ListItemIcon>
-        <ListItemText>Delete</ListItemText>
+        <ListItemText>{t("common.delete")}</ListItemText>
       </MenuItem>
     </Menu>
     </>

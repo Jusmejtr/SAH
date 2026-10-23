@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { FaCheck, FaCopy, FaShieldAlt } from "react-icons/fa";
 import { copyText, getGuardCode } from "../api";
 import type { Account, GuardCode } from "../api";
+import { useI18n } from "../i18n";
 
 type GuardCodeDialogProps = {
   account: Account | null;
@@ -25,16 +26,11 @@ const WARN_SECONDS = 5;
 const CODE_FONT =
   '"Cascadia Mono", "Consolas", "SFMono-Regular", ui-monospace, monospace';
 
-const cleanError = (err: unknown) =>
-  String((err as Error)?.message ?? err).replace(
-    /^Error invoking remote method '[^']+': (Error: )?/,
-    "",
-  );
-
 export default function GuardCodeDialog({
   account,
   onClose,
 }: GuardCodeDialogProps) {
+  const { t, tm } = useI18n();
   const [guard, setGuard] = useState<GuardCode | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -66,7 +62,7 @@ export default function GuardCodeDialog({
         setGuard(next);
         setError("");
       } catch (err) {
-        if (active) setError(cleanError(err));
+        if (active) setError(String((err as Error)?.message ?? err));
       } finally {
         loading = false;
       }
@@ -99,7 +95,7 @@ export default function GuardCodeDialog({
       await copyText(guard.code);
       setCopied(true);
     } catch (err) {
-      setError(cleanError(err));
+      setError(String((err as Error)?.message ?? err));
     }
   };
 
@@ -132,7 +128,7 @@ export default function GuardCodeDialog({
               component="div"
               sx={{ fontWeight: 700, fontSize: "1.05rem", lineHeight: 1.25 }}
             >
-              Steam Guard code
+              {t("guard.title")}
             </Typography>
             <Typography
               component="div"
@@ -151,13 +147,13 @@ export default function GuardCodeDialog({
       <DialogContent>
         {error ? (
           <Alert severity="error" variant="outlined">
-            {error}
+            {tm(error)}
           </Alert>
         ) : (
           <>
             <Box
               onClick={() => void handleCopy()}
-              title={guard ? "Click to copy" : undefined}
+              title={guard ? t("guard.clickToCopy") : undefined}
               sx={(theme) => ({
                 py: 2.5,
                 borderRadius: 2,
@@ -208,7 +204,7 @@ export default function GuardCodeDialog({
                 variant="determinate"
                 value={progress}
                 color={warn ? "warning" : "primary"}
-                aria-label="Time until the code changes"
+                aria-label={t("guard.timeLeft")}
                 sx={{
                   flex: 1,
                   height: 6,
@@ -229,7 +225,7 @@ export default function GuardCodeDialog({
                   color: warn ? "warning.main" : "text.secondary",
                 }}
               >
-                {guard ? `${seconds}s` : ""}
+                {guard ? t("guard.seconds", { seconds }) : ""}
               </Typography>
             </Stack>
             <Typography
@@ -237,7 +233,7 @@ export default function GuardCodeDialog({
               color="text.secondary"
               sx={{ display: "block", mt: 1 }}
             >
-              A new code is generated every 30 seconds.
+              {t("guard.newCodeEvery")}
             </Typography>
           </>
         )}
@@ -249,7 +245,7 @@ export default function GuardCodeDialog({
           onClick={onClose}
           sx={{ color: "text.secondary" }}
         >
-          Close
+          {t("common.close")}
         </Button>
         <Button
           variant="contained"
@@ -260,7 +256,7 @@ export default function GuardCodeDialog({
           autoFocus
           sx={{ minWidth: 124 }}
         >
-          {copied ? "Copied" : "Copy code"}
+          {copied ? t("common.copied") : t("guard.copyCode")}
         </Button>
       </DialogActions>
     </Dialog>

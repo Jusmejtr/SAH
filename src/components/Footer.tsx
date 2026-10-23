@@ -8,6 +8,7 @@ import {
   alpha,
 } from "@mui/material";
 import { FaRegFileAlt, FaTimes } from "react-icons/fa";
+import { useI18n } from "../i18n";
 
 type FooterProps = {
   step: string;
@@ -17,6 +18,7 @@ type FooterProps = {
 };
 
 export default function Footer({ step, busy, onCancel, onOpenLog }: FooterProps) {
+  const { t } = useI18n();
   return (
     <Paper
       square
@@ -65,7 +67,7 @@ export default function Footer({ step, busy, onCancel, onOpenLog }: FooterProps)
         noWrap
         sx={{ fontWeight: busy ? 600 : 500 }}
       >
-        {busy ? step || "Working…" : "Idle"}
+        {busy ? step || t("common.working") : t("footer.idle")}
       </Typography>
 
       <Box sx={{ flexGrow: 1 }} />
@@ -77,7 +79,7 @@ export default function Footer({ step, busy, onCancel, onOpenLog }: FooterProps)
         onClick={onOpenLog}
         sx={{ color: "text.secondary" }}
       >
-        Log
+        {t("footer.log")}
       </Button>
       <Button
         size="small"
@@ -87,7 +89,7 @@ export default function Footer({ step, busy, onCancel, onOpenLog }: FooterProps)
         disabled={!busy}
         onClick={onCancel}
       >
-        Cancel
+        {t("common.cancel")}
       </Button>
     </Paper>
   );

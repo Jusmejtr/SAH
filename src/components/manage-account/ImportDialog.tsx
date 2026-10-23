@@ -19,6 +19,8 @@ import {
 } from "@mui/material";
 import { FaExclamationTriangle, FaFileImport, FaUpload } from "react-icons/fa";
 import type { NewAccount } from "../../api";
+import { useI18n } from "../../i18n";
+import type { MessageKey } from "../../i18n";
 
 type ImportDialogProps = {
   onImport: (accounts: NewAccount[]) => Promise<void>;
@@ -31,6 +33,20 @@ type ColumnLayout =
   | "password,username,sharedSecret,displayName";
 
 const DEFAULT_DELIMITER = ":";
+
+const COLUMN_KEYS = {
+  username: "column.username",
+  password: "column.password",
+  sharedSecret: "column.sharedSecret",
+  displayName: "column.displayName",
+} as const;
+
+const LAYOUTS: ColumnLayout[] = [
+  "username,password,sharedSecret",
+  "password,username,sharedSecret",
+  "username,password,sharedSecret,displayName",
+  "password,username,sharedSecret,displayName",
+];
 
 const stripWrappingQuotes = (value: string) => {
   const trimmed = value.trim();
@@ -65,7 +81,7 @@ type MaFileRow = {
   username: string;
   sharedSecret: string;
   password: string;
-  issue: string;
+  issue: MessageKey | "";
 };
 
 const parseMaFile = (fileName: string, content: string): MaFileRow => {
@@ -81,7 +97,7 @@ const parseMaFile = (fileName: string, content: string): MaFileRow => {
   try {
     parsed = JSON.parse(content);
   } catch {
-    row.issue = "File is not valid JSON.";
+    row.issue = "import.notJson";
     return row;
   }
 
@@ -92,13 +108,19 @@ const parseMaFile = (fileName: string, content: string): MaFileRow => {
     parsed.shared_secret ?? parsed.SharedSecret ?? "",
   ).trim();
 
-  if (!row.username) row.issue = "Missing account_name.";
-  else if (!row.sharedSecret) row.issue = "Missing shared_secret.";
+  if (!row.username) row.issue = "import.missingAccountName";
+  else if (!row.sharedSecret) row.issue = "import.missingSharedSecretField";
 
   return row;
 };
 
 export default function ImportDialog({ onImport }: ImportDialogProps) {
+  const { t, tm } = useI18n();
+  const columnLabel = (layout: ColumnLayout) =>
+    layout
+      .split(",")
+      .map((column) => t(COLUMN_KEYS[column as keyof typeof COLUMN_KEYS]))
+      .join(", ");
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<"text" | "mafile">("text");
   const [maRows, setMaRows] = useState<MaFileRow[]>([]);
@@ -144,11 +166,14 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
 
       let issue = "";
       if (tokens.length < columns.length) {
-        issue = `Expected ${columns.length} values, got ${tokens.length}.`;
+        issue = t("import.expectedValues", {
+          expected: columns.length,
+          actual: tokens.length,
+        });
       } else if (!username || !password) {
-        issue = "Missing username or password.";
+        issue = t("import.missingUserPass");
       } else if (!sharedSecret) {
-        issue = "Missing shared secret.";
+        issue = t("import.missingSecret");
       }
 
       return {
@@ -161,7 +186,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
         issue,
       };
     });
-  }, [effectiveDelimiter, fileContent, layout]);
+  }, [effectiveDelimiter, fileContent, layout, t]);
 
   const previewErrors = useMemo(
     () => previewRows.filter((row) => Boolean(row.issue)).length,
@@ -182,11 +207,11 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
 
   const parseAccounts = () => {
     if (!fileContent.trim()) {
-      throw new Error("Select a file with account entries first.");
+      throw new Error(t("import.selectFile"));
     }
 
     if (!effectiveDelimiter) {
-      throw new Error("Select a delimiter.");
+      throw new Error(t("common.selectDelimiter"));
     }
 
     const columns = layoutToColumns(layout);
@@ -196,7 +221,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
       .filter(Boolean);
 
     if (lines.length === 0) {
-      throw new Error("The selected file is empty.");
+      throw new Error(t("import.fileEmpty"));
     }
 
     const accounts: NewAccount[] = [];
@@ -208,7 +233,11 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
 
       if (tokens.length < columns.length) {
         throw new Error(
-          `Line ${index + 1} has ${tokens.length} value(s), expected at least ${columns.length}.`,
+          t("import.lineTooFew", {
+            line: index + 1,
+            expected: columns.length,
+            actual: tokens.length,
+          }),
         );
       }
 
@@ -222,11 +251,11 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
       const sharedSecret = (record.sharedSecret ?? "").trim();
 
       if (!username || !password) {
-        throw new Error(`Line ${index + 1} is missing username or password.`);
+        throw new Error(t("import.lineMissingUserPass", { line: index + 1 }));
       }
 
       if (!sharedSecret) {
-        throw new Error(`Line ${index + 1} is missing shared secret.`);
+        throw new Error(t("import.lineMissingSecret", { line: index + 1 }));
       }
 
       accounts.push({
@@ -285,15 +314,15 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
 
   const parseMaAccounts = () => {
     if (maRows.length === 0) {
-      throw new Error("Select at least one .maFile.");
+      throw new Error(t("import.selectMaFile"));
     }
 
     return maRows.map((row) => {
       if (row.issue) {
-        throw new Error(`${row.fileName}: ${row.issue}`);
+        throw new Error(`${row.fileName}: ${t(row.issue)}`);
       }
       if (!row.password) {
-        throw new Error(`${row.fileName}: password is required.`);
+        throw new Error(t("import.passwordRequired", { file: row.fileName }));
       }
 
       return {
@@ -329,7 +358,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
         onClick={() => setOpen(true)}
         startIcon={<FaFileImport size={12} />}
       >
-        Import
+        {t("common.import")}
       </Button>
       <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
         <DialogTitle>
@@ -347,13 +376,13 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
             >
               <FaFileImport size={16} />
             </Box>
-            <span>Import accounts</span>
+            <span>{t("import.title")}</span>
           </Stack>
         </DialogTitle>
         <DialogContent>
           <form id="import-accounts-form" onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {error && <Alert severity="error">{error}</Alert>}
+              {error && <Alert severity="error">{tm(error)}</Alert>}
 
               <Tabs
                 value={source}
@@ -362,8 +391,8 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                 }
                 variant="fullWidth"
               >
-                <Tab value="text" label="Text list" />
-                <Tab value="mafile" label=".maFile" />
+                <Tab value="text" label={t("import.tabText")} />
+                <Tab value="mafile" label={t("import.tabMaFile")} />
               </Tabs>
 
               {source === "text" ? (
@@ -400,57 +429,50 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                   <FaUpload size={20} />
                 </Box>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {fileName || "Choose a file"}
+                  {fileName || t("import.chooseFile")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  One account per line, separated by the delimiter below.
+                  {t("import.fileHint")}
                 </Typography>
               </Box>
 
               <TextField
                 select
-                label="Delimiter"
+                label={t("common.delimiter")}
                 value={delimiter}
                 onChange={(event) => setDelimiter(readEventValue(event))}
                 fullWidth
               >
-                <MenuItem value=":">Colon (:)</MenuItem>
-                <MenuItem value=";">Semicolon (;)</MenuItem>
-                <MenuItem value=",">Comma (,)</MenuItem>
-                <MenuItem value="|">Pipe (|)</MenuItem>
-                <MenuItem value="\t">Tab</MenuItem>
-                <MenuItem value="custom">Custom</MenuItem>
+                <MenuItem value=":">{t("common.delimiterColon")}</MenuItem>
+                <MenuItem value=";">{t("common.delimiterSemicolon")}</MenuItem>
+                <MenuItem value=",">{t("common.delimiterComma")}</MenuItem>
+                <MenuItem value="|">{t("common.delimiterPipe")}</MenuItem>
+                <MenuItem value="\t">{t("common.delimiterTab")}</MenuItem>
+                <MenuItem value="custom">{t("common.delimiterCustom")}</MenuItem>
               </TextField>
 
               {delimiter === "custom" && (
                 <TextField
-                  label="Custom Delimiter"
+                  label={t("common.customDelimiter")}
                   value={customDelimiter}
                   onChange={(event) => setCustomDelimiter(readEventValue(event))}
                   fullWidth
-                  helperText="Use a single character, e.g. #"
+                  helperText={t("common.customDelimiterHelp")}
                 />
               )}
 
               <TextField
                 select
-                label="Column Order"
+                label={t("common.columnOrder")}
                 value={layout}
                 onChange={(event) => setLayout(readEventValue(event) as ColumnLayout)}
                 fullWidth
               >
-                <MenuItem value="username,password,sharedSecret">
-                  username, password, sharedSecret
-                </MenuItem>
-                <MenuItem value="password,username,sharedSecret">
-                  password, username, sharedSecret
-                </MenuItem>
-                <MenuItem value="username,password,sharedSecret,displayName">
-                  username, password, sharedSecret, displayName
-                </MenuItem>
-                <MenuItem value="password,username,sharedSecret,displayName">
-                  password, username, sharedSecret, displayName
-                </MenuItem>
+                {LAYOUTS.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {columnLabel(option)}
+                  </MenuItem>
+                ))}
               </TextField>
 
               {previewRows.length > 0 && (
@@ -471,11 +493,13 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                     spacing={1}
                     sx={{ alignItems: "center" }}
                   >
-                    <Typography variant="subtitle2">Preview</Typography>
+                    <Typography variant="subtitle2">
+                      {t("import.preview")}
+                    </Typography>
                     <Chip
                       size="small"
                       variant="outlined"
-                      label={`${previewRows.length} line(s)`}
+                      label={t("import.lines", { count: previewRows.length })}
                     />
                     {previewErrors > 0 && (
                       <Chip
@@ -483,7 +507,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                         color="warning"
                         variant="outlined"
                         icon={<FaExclamationTriangle size={10} />}
-                        label={`${previewErrors} issue(s)`}
+                        label={t("import.issues", { count: previewErrors })}
                       />
                     )}
                   </Stack>
@@ -517,7 +541,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                             noWrap
                             sx={{ fontWeight: 600 }}
                           >
-                            {row.username || "(no username)"}
+                            {row.username || t("import.noUsername")}
                             {row.displayName ? ` · ${row.displayName}` : ""}
                           </Typography>
                           <Typography
@@ -527,9 +551,10 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                             sx={{ display: "block" }}
                           >
                             {row.issue ||
-                              `pass ${row.password ? "••••••" : "—"} · secret ${
-                                row.sharedSecret ? "••••••" : "—"
-                              }`}
+                              t("import.rowSummary", {
+                                password: row.password ? "••••••" : "—",
+                                secret: row.sharedSecret ? "••••••" : "—",
+                              })}
                           </Typography>
                         </Box>
                       </Stack>
@@ -538,7 +563,10 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
 
                   {previewRows.length > 8 && (
                     <Typography variant="caption" color="text.secondary">
-                      Showing first 8 of {previewRows.length} lines.
+                      {t("import.showingFirst", {
+                        shown: 8,
+                        count: previewRows.length,
+                      })}
                     </Typography>
                   )}
                 </Stack>
@@ -585,12 +613,11 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                     </Box>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {maRows.length > 0
-                        ? `${maRows.length} .maFile(s) selected`
-                        : "Choose .maFile files"}
+                        ? t("import.maFilesSelected", { count: maRows.length })
+                        : t("import.chooseMaFiles")}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Steam Desktop Authenticator files. Passwords are not
-                      stored in .maFile, so enter them below.
+                      {t("import.maFileHint")}
                     </Typography>
                   </Box>
 
@@ -624,18 +651,18 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
                                 color="error"
                                 variant="outlined"
                                 icon={<FaExclamationTriangle size={10} />}
-                                label={row.issue}
+                                label={t(row.issue)}
                               />
                             ) : (
                               <Chip
                                 size="small"
                                 variant="outlined"
-                                label="secret ok"
+                                label={t("import.secretOk")}
                               />
                             )}
                           </Stack>
                           <TextField
-                            label="Password"
+                            label={t("common.password")}
                             type="password"
                             size="small"
                             fullWidth
@@ -668,7 +695,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
             color="inherit"
             sx={{ color: "text.secondary" }}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="contained"
@@ -689,14 +716,14 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
             }
           >
             {saving
-              ? "Importing…"
+              ? t("import.importing")
               : source === "mafile"
                 ? maRows.length > 0
-                  ? `Import ${maRows.length}`
-                  : "Import"
+                  ? t("import.importCount", { count: maRows.length })
+                  : t("common.import")
                 : previewRows.length > 0
-                  ? `Import ${previewRows.length}`
-                  : "Import"}
+                  ? t("import.importCount", { count: previewRows.length })
+                  : t("common.import")}
           </Button>
         </DialogActions>
       </Dialog>

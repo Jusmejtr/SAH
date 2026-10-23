@@ -6,6 +6,10 @@ import {
   Divider,
   IconButton,
   InputAdornment,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   TextField,
   Toolbar,
@@ -14,8 +18,10 @@ import {
   alpha,
 } from "@mui/material";
 import {
+  FaCheck,
   FaCheckDouble,
   FaCog,
+  FaGlobe,
   FaMoon,
   FaSearch,
   FaSlidersH,
@@ -31,6 +37,8 @@ import ExportDialog from "./manage-account/ExportDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import SettingsDialog from "./SettingsDialog";
 import { accentGradient } from "../theme";
+import { LANGUAGES, useI18n } from "../i18n";
+import type { LanguagePreference } from "../i18n";
 import type { ColorMode } from "../theme";
 import type {
   AddOptions,
@@ -74,6 +82,18 @@ export default function Nav({
 }: NavProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [languageAnchor, setLanguageAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const { t, preference, setPreference } = useI18n();
+
+  const languageOptions: { value: LanguagePreference; label: string }[] = [
+    { value: "auto", label: t("nav.systemLanguage") },
+    ...LANGUAGES.map((language) => ({
+      value: language.code,
+      label: language.name,
+    })),
+  ];
 
   const handleDeleteClick = () => {
     if (selectedCount > 0) {
@@ -127,15 +147,15 @@ export default function Nav({
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
               {accountCount === 0
-                ? "No accounts stored"
-                : `${accountCount} account${accountCount === 1 ? "" : "s"} stored`}
+                ? t("nav.noAccounts")
+                : t("nav.accountsStored", { count: accountCount })}
             </Typography>
           </Box>
 
           {accountCount > 0 && (
             <TextField
               size="small"
-              placeholder="Search accounts…"
+              placeholder={t("nav.searchPlaceholder")}
               value={query}
               onChange={(event) =>
                 onQueryChange((event.target as HTMLInputElement).value)
@@ -152,7 +172,7 @@ export default function Nav({
                     <InputAdornment position="end">
                       <IconButton
                         size="small"
-                        aria-label="clear search"
+                        aria-label={t("nav.clearSearch")}
                         onClick={() => onQueryChange("")}
                       >
                         <FaTimes size={12} />
@@ -164,14 +184,25 @@ export default function Nav({
             />
           )}
 
-          <Tooltip title={mode === "dark" ? "Light mode" : "Dark mode"}>
-            <IconButton aria-label="toggle color mode" onClick={onToggleMode}>
+          <Tooltip title={t("nav.language")}>
+            <IconButton
+              aria-label={t("nav.language")}
+              aria-haspopup="menu"
+              onClick={(event) =>
+                setLanguageAnchor(event.currentTarget as HTMLElement)
+              }
+            >
+              <FaGlobe size={16} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={mode === "dark" ? t("nav.lightMode") : t("nav.darkMode")}>
+            <IconButton aria-label={t("nav.toggleColorMode")} onClick={onToggleMode}>
               {mode === "dark" ? <FaSun size={16} /> : <FaMoon size={16} />}
             </IconButton>
           </Tooltip>
-          <Tooltip title="Settings">
+          <Tooltip title={t("nav.settings")}>
             <IconButton
-              aria-label="settings"
+              aria-label={t("nav.settings")}
               onClick={() => setSettingsOpen(true)}
             >
               <FaCog size={16} />
@@ -203,7 +234,7 @@ export default function Nav({
             startIcon={manageMode ? <FaTimes /> : <FaSlidersH />}
             disabled={accountCount === 0 && !manageMode}
           >
-            {manageMode ? "Done" : "Manage"}
+            {manageMode ? t("common.done") : t("nav.manage")}
           </Button>
         </Stack>
 
@@ -229,11 +260,11 @@ export default function Nav({
                 startIcon={<FaCheckDouble />}
                 onClick={onSelectAll}
               >
-                {allSelected ? "Clear selection" : "Select all"}
+                {allSelected ? t("nav.clearSelection") : t("nav.selectAll")}
               </Button>
               <Chip
                 size="small"
-                label={`${selectedCount} selected`}
+                label={t("nav.selected", { count: selectedCount })}
                 color={selectedCount > 0 ? "primary" : "default"}
                 variant={selectedCount > 0 ? "filled" : "outlined"}
               />
@@ -246,12 +277,36 @@ export default function Nav({
                 disabled={selectedCount === 0}
                 onClick={handleDeleteClick}
               >
-                Delete
+                {t("common.delete")}
               </Button>
             </Stack>
           </>
         )}
       </AppBar>
+
+      <Menu
+        anchorEl={languageAnchor}
+        open={Boolean(languageAnchor)}
+        onClose={() => setLanguageAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {languageOptions.map((option) => (
+          <MenuItem
+            key={option.value}
+            selected={option.value === preference}
+            onClick={() => {
+              setPreference(option.value);
+              setLanguageAnchor(null);
+            }}
+          >
+            <ListItemIcon>
+              {option.value === preference && <FaCheck size={12} />}
+            </ListItemIcon>
+            <ListItemText>{option.label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
 
       <DeleteConfirmDialog
         open={confirmOpen}

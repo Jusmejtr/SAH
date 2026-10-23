@@ -11,6 +11,7 @@ import {
   alpha,
 } from "@mui/material";
 import { FaExclamationTriangle, FaTrashAlt } from "react-icons/fa";
+import { useI18n } from "../i18n";
 
 type DeleteConfirmDialogProps = {
   open: boolean;
@@ -29,6 +30,7 @@ export default function DeleteConfirmDialog({
   onClose,
   onConfirm,
 }: DeleteConfirmDialogProps) {
+  const { t } = useI18n();
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>
@@ -47,17 +49,15 @@ export default function DeleteConfirmDialog({
             <FaExclamationTriangle size={17} />
           </Box>
           <span>
-            {accountName ? "Delete this account?" : "Delete selected accounts?"}
+            {accountName ? t("delete.titleOne") : t("delete.titleMany")}
           </span>
         </Stack>
       </DialogTitle>
       <DialogContent>
         <DialogContentText>
           {accountName
-            ? `This will permanently delete “${accountName}”. This action cannot be undone.`
-            : selectedCount === 1
-              ? "This will permanently delete 1 selected account. This action cannot be undone."
-              : `This will permanently delete ${selectedCount} selected accounts. This action cannot be undone.`}
+            ? t("delete.bodyNamed", { name: accountName })
+            : t("delete.bodySelected", { count: selectedCount })}
         </DialogContentText>
         {warning && (
           <Alert severity="warning" sx={{ mt: 2 }}>
@@ -67,7 +67,7 @@ export default function DeleteConfirmDialog({
       </DialogContent>
       <DialogActions>
         <Button color="inherit" onClick={onClose} sx={{ color: "text.secondary" }}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           color="error"
@@ -75,7 +75,7 @@ export default function DeleteConfirmDialog({
           startIcon={<FaTrashAlt size={13} />}
           onClick={onConfirm}
         >
-          Delete
+          {t("common.delete")}
         </Button>
       </DialogActions>
     </Dialog>
