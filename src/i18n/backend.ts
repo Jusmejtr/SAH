@@ -66,6 +66,18 @@ export const BACKEND_EXACT: Record<string, MessageKey> = {
   "Enter the activation code.": "backend.enterActivationCode",
   "That activation code is wrong. Check it and try again.":
     "backend.wrongActivationCode",
+
+  // electron/steam/confirmations.js
+  "This account has no identity secret stored. Add it in Edit, or import the account's maFile.":
+    "backend.noIdentitySecret",
+  "Confirmations need the account's shared secret to sign in.":
+    "backend.confNeedsSharedSecret",
+  "This account uses email Steam Guard. Confirmations need a mobile authenticator.":
+    "backend.confEmailGuard",
+  "Steam did not accept the Steam Guard code. Check the shared secret and the computer's clock.":
+    "backend.confCodeRejected",
+  "Steam did not return the confirmations. Check that the identity secret is correct.":
+    "backend.confListFailed",
 };
 
 export const BACKEND_PATTERNS: {
@@ -96,6 +108,16 @@ export const BACKEND_PATTERNS: {
   {
     pattern: /^Steam did not accept the activation: ([\s\S]*)$/,
     key: "backend.activationFailed",
+    param: "detail",
+  },
+  {
+    pattern: /^Could not load confirmations: ([\s\S]*)$/,
+    key: "backend.confLoadFailed",
+    param: "detail",
+  },
+  {
+    pattern: /^Steam could not complete the action: ([\s\S]*)$/,
+    key: "backend.confRespondFailed",
     param: "detail",
   },
   {

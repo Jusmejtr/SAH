@@ -273,6 +273,32 @@ const hu: Messages = {
   "backend.wrongActivationCode":
     "Hibás aktiváló kód. Ellenőrizd, és próbáld újra.",
   "backend.activationFailed": "A Steam nem fogadta el az aktiválást: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "A megerősítésekhez kell. Hagyd üresen, ha a jelenlegit megtartod.",
+  "card.confirmations": "Megerősítések…",
+  "confirm.title": "Megerősítések",
+  "confirm.loading": "Megerősítések betöltése…",
+  "confirm.refresh": "Frissítés",
+  "confirm.empty": "Nincs mit megerősíteni",
+  "confirm.emptyHint": "Itt jelennek meg a megerősítésre váró cserék, piaci hirdetések és fiókmódosítások.",
+  "confirm.accept": "Megerősítés",
+  "confirm.decline": "Elutasítás",
+  "confirm.acceptAll": "Összes megerősítése ({count})",
+  "confirm.declineAll": "Összes elutasítása ({count})",
+  "confirm.clickAgain": "Kattints újra a megerősítéshez",
+  "confirm.acceptedDone": "Megerősítve.",
+  "confirm.declinedDone": "Elutasítva.",
+  "confirm.typeTrade": "Csereajánlat",
+  "confirm.typeMarket": "Piaci hirdetés",
+  "confirm.typeOther": "Megerősítés",
+  "backend.noIdentitySecret": "Ehhez a fiókhoz nincs identity secret mentve. Add meg a Szerkesztésben, vagy importáld a fiók maFile-ját.",
+  "backend.confNeedsSharedSecret": "A megerősítésekhez a fiók shared secretje kell a bejelentkezéshez.",
+  "backend.confEmailGuard": "Ez a fiók e-mailes Steam Guardot használ. A megerősítésekhez mobil hitelesítő kell.",
+  "backend.confCodeRejected": "A Steam nem fogadta el a Steam Guard kódot. Ellenőrizd a shared secretet és a számítógép óráját.",
+  "backend.confListFailed": "A Steam nem adta vissza a megerősítéseket. Ellenőrizd, hogy helyes-e az identity secret.",
+  "backend.confLoadFailed": "Nem sikerült betölteni a megerősítéseket: {detail}",
+  "backend.confRespondFailed": "A Steam nem tudta végrehajtani a műveletet: {detail}",
 };
 
 export default hu;

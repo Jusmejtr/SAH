@@ -273,6 +273,32 @@ const fr: Messages = {
   "backend.wrongActivationCode":
     "Ce code d'activation est incorrect. Vérifiez-le et réessayez.",
   "backend.activationFailed": "Steam n'a pas accepté l'activation : {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "Nécessaire pour les confirmations. Laisse vide pour conserver l'actuel.",
+  "card.confirmations": "Confirmations…",
+  "confirm.title": "Confirmations",
+  "confirm.loading": "Chargement des confirmations…",
+  "confirm.refresh": "Actualiser",
+  "confirm.empty": "Rien à confirmer",
+  "confirm.emptyHint": "Les offres d'échange, les annonces du marché et les modifications du compte en attente de confirmation apparaissent ici.",
+  "confirm.accept": "Confirmer",
+  "confirm.decline": "Refuser",
+  "confirm.acceptAll": "Tout confirmer ({count})",
+  "confirm.declineAll": "Tout refuser ({count})",
+  "confirm.clickAgain": "Clique à nouveau pour confirmer",
+  "confirm.acceptedDone": "Confirmé.",
+  "confirm.declinedDone": "Refusé.",
+  "confirm.typeTrade": "Offre d'échange",
+  "confirm.typeMarket": "Annonce du marché",
+  "confirm.typeOther": "Confirmation",
+  "backend.noIdentitySecret": "Aucun identity secret n'est enregistré pour ce compte. Ajoute-le dans Modifier ou importe le maFile du compte.",
+  "backend.confNeedsSharedSecret": "Les confirmations ont besoin du shared secret du compte pour se connecter.",
+  "backend.confEmailGuard": "Ce compte utilise Steam Guard par e-mail. Les confirmations nécessitent un authentificateur mobile.",
+  "backend.confCodeRejected": "Steam n'a pas accepté le code Steam Guard. Vérifie le shared secret et l'horloge de l'ordinateur.",
+  "backend.confListFailed": "Steam n'a pas renvoyé les confirmations. Vérifie que l'identity secret est correct.",
+  "backend.confLoadFailed": "Impossible de charger les confirmations : {detail}",
+  "backend.confRespondFailed": "Steam n'a pas pu effectuer l'action : {detail}",
 };
 
 export default fr;

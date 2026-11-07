@@ -80,6 +80,7 @@ type MaFileRow = {
   fileName: string;
   username: string;
   sharedSecret: string;
+  identitySecret: string;
   password: string;
   issue: MessageKey | "";
 };
@@ -89,6 +90,7 @@ const parseMaFile = (fileName: string, content: string): MaFileRow => {
     fileName,
     username: "",
     sharedSecret: "",
+    identitySecret: "",
     password: "",
     issue: "",
   };
@@ -106,6 +108,9 @@ const parseMaFile = (fileName: string, content: string): MaFileRow => {
   ).trim();
   row.sharedSecret = String(
     parsed.shared_secret ?? parsed.SharedSecret ?? "",
+  ).trim();
+  row.identitySecret = String(
+    parsed.identity_secret ?? parsed.IdentitySecret ?? "",
   ).trim();
 
   if (!row.username) row.issue = "import.missingAccountName";
@@ -329,6 +334,7 @@ export default function ImportDialog({ onImport }: ImportDialogProps) {
         username: row.username,
         password: row.password,
         sharedSecret: row.sharedSecret,
+        identitySecret: row.identitySecret,
         displayName: "",
       } satisfies NewAccount;
     });

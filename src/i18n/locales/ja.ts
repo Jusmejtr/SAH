@@ -272,6 +272,32 @@ const ja: Messages = {
   "backend.wrongActivationCode":
     "有効化コードが正しくありません。確認してもう一度お試しください。",
   "backend.activationFailed": "Steam が有効化を受け付けませんでした: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "確認に必要です。現在の値を維持する場合は空欄のままにしてください。",
+  "card.confirmations": "確認…",
+  "confirm.title": "確認",
+  "confirm.loading": "確認を読み込み中…",
+  "confirm.refresh": "更新",
+  "confirm.empty": "確認待ちの項目はありません",
+  "confirm.emptyHint": "確認待ちのトレードオファー、マーケット出品、アカウント変更がここに表示されます。",
+  "confirm.accept": "承認",
+  "confirm.decline": "拒否",
+  "confirm.acceptAll": "すべて承認 ({count})",
+  "confirm.declineAll": "すべて拒否 ({count})",
+  "confirm.clickAgain": "もう一度クリックして確定",
+  "confirm.acceptedDone": "承認しました。",
+  "confirm.declinedDone": "拒否しました。",
+  "confirm.typeTrade": "トレードオファー",
+  "confirm.typeMarket": "マーケット出品",
+  "confirm.typeOther": "確認",
+  "backend.noIdentitySecret": "このアカウントには identity secret が保存されていません。編集で追加するか、アカウントの maFile をインポートしてください。",
+  "backend.confNeedsSharedSecret": "確認にはサインイン用にアカウントの shared secret が必要です。",
+  "backend.confEmailGuard": "このアカウントはメールの Steam Guard を使用しています。確認にはモバイル認証が必要です。",
+  "backend.confCodeRejected": "Steam が Steam Guard コードを受け付けませんでした。shared secret とコンピューターの時刻を確認してください。",
+  "backend.confListFailed": "Steam から確認一覧が返されませんでした。identity secret が正しいか確認してください。",
+  "backend.confLoadFailed": "確認を読み込めませんでした: {detail}",
+  "backend.confRespondFailed": "Steam が操作を完了できませんでした: {detail}",
 };
 
 export default ja;

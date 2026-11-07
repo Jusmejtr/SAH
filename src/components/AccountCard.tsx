@@ -14,6 +14,7 @@ import {
 import { useState } from "preact/hooks";
 import {
   FaCheck,
+  FaClipboardCheck,
   FaDownload,
   FaPen,
   FaPlusCircle,
@@ -35,6 +36,7 @@ type AccountCardProps = {
   onShowGuard: (account: Account) => void;
   onSetupGuard: (account: Account) => void;
   onExportMaFile: (account: Account) => void;
+  onShowConfirmations: (account: Account) => void;
 };
 
 const hueFrom = (value: string) => {
@@ -65,6 +67,7 @@ export default function AccountCard({
   onShowGuard,
   onSetupGuard,
   onExportMaFile,
+  onShowConfirmations,
 }: AccountCardProps) {
   const { t } = useI18n();
   const [menuPosition, setMenuPosition] = useState<{
@@ -151,6 +154,39 @@ export default function AccountCard({
           sx={{ position: "absolute", top: 6, left: 6, zIndex: 2 }}
         />
       )}
+
+      {account.hasSharedSecret &&
+        account.hasIdentitySecret &&
+        !manageMode &&
+        !busy && (
+          <Tooltip title={t("confirm.title")} placement="top">
+            <IconButton
+              className="sah-card-action"
+              size="small"
+              aria-label={t("confirm.title")}
+              onClick={(event) => {
+                event.stopPropagation();
+                onShowConfirmations(account);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+              sx={{
+                position: "absolute",
+                top: 6,
+                right: 38,
+                zIndex: 2,
+                color: "text.secondary",
+                opacity: 0.55,
+                transition: "opacity .16s ease, color .16s ease",
+                "&:hover, &:focus-visible": {
+                  opacity: 1,
+                  color: "primary.main",
+                },
+              }}
+            >
+              <FaClipboardCheck size={14} />
+            </IconButton>
+          </Tooltip>
+        )}
 
       {account.hasSharedSecret && !manageMode && !busy && (
         <Tooltip title={t("guard.title")} placement="top">
@@ -260,6 +296,19 @@ export default function AccountCard({
             <FaPlusCircle size={13} />
           </ListItemIcon>
           <ListItemText>{t("card.setupGuard")}</ListItemText>
+        </MenuItem>
+      )}
+      {account.hasSharedSecret && account.hasIdentitySecret && (
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            onShowConfirmations(account);
+          }}
+        >
+          <ListItemIcon>
+            <FaClipboardCheck size={13} />
+          </ListItemIcon>
+          <ListItemText>{t("card.confirmations")}</ListItemText>
         </MenuItem>
       )}
       {account.hasAuthenticator && (

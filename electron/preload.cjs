@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld("sah", {
     ipcRenderer.invoke("guard-setup:email-code", code),
   finalizeGuardSetup: (code) => ipcRenderer.invoke("guard-setup:finalize", code),
   cancelGuardSetup: () => ipcRenderer.invoke("guard-setup:cancel"),
+  listConfirmations: (id) => ipcRenderer.invoke("confirmations:list", id),
+  respondToConfirmations: (id, items, accept) =>
+    ipcRenderer.invoke("confirmations:respond", id, items, accept),
   exportMaFile: (id) => ipcRenderer.invoke("accounts:export-mafile", id),
   exportAccounts: (options) => ipcRenderer.invoke("accounts:export", options),
   loginAccount: (id) => ipcRenderer.invoke("accounts:login", id),

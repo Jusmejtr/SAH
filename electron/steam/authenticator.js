@@ -17,7 +17,7 @@ let session = null;
 
 const resultName = (value) => EResult[value] ?? String(value);
 
-const withTimeout = (promise) =>
+export const withTimeout = (promise) =>
   new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error("Steam did not respond in time. Try again.")),
@@ -60,7 +60,7 @@ const confirmAuthenticator = (community, sharedSecret, activationCode) =>
     ),
   );
 
-const signInErrorMessage = (error) => {
+export const signInErrorMessage = (error) => {
   switch (error?.eresult) {
     case EResult.InvalidPassword:
       return "Wrong username or password.";

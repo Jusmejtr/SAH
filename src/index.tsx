@@ -20,6 +20,7 @@ import EditDialog from "./components/manage-account/EditDialog";
 import DeleteConfirmDialog from "./components/DeleteConfirmDialog";
 import GuardCodeDialog from "./components/GuardCodeDialog";
 import SetupGuardDialog from "./components/SetupGuardDialog";
+import ConfirmationsDialog from "./components/ConfirmationsDialog";
 import Footer from "./components/Footer";
 import UpdateBanner from "./components/UpdateBanner";
 import { COLOR_MODE_KEY, createAppTheme } from "./theme";
@@ -81,6 +82,8 @@ export function App() {
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
   const [guardAccount, setGuardAccount] = useState<Account | null>(null);
   const [setupAccount, setSetupAccount] = useState<Account | null>(null);
+  const [confirmationsAccount, setConfirmationsAccount] =
+    useState<Account | null>(null);
 
   const theme = useMemo(() => createAppTheme(mode), [mode]);
 
@@ -357,6 +360,7 @@ export function App() {
                     onShowGuard={setGuardAccount}
                     onSetupGuard={setSetupAccount}
                     onExportMaFile={(item) => void handleExportMaFile(item)}
+                    onShowConfirmations={setConfirmationsAccount}
                   />
                 ))}
               </Box>
@@ -400,6 +404,11 @@ export function App() {
         <GuardCodeDialog
           account={guardAccount}
           onClose={() => setGuardAccount(null)}
+        />
+
+        <ConfirmationsDialog
+          account={confirmationsAccount}
+          onClose={() => setConfirmationsAccount(null)}
         />
 
         <SetupGuardDialog

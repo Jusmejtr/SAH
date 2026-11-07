@@ -294,6 +294,32 @@ const ru: Messages = {
   "backend.wrongActivationCode":
     "Неверный код активации. Проверьте его и попробуйте снова.",
   "backend.activationFailed": "Steam не принял активацию: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "Нужен для подтверждений. Оставьте пустым, чтобы сохранить текущий.",
+  "card.confirmations": "Подтверждения…",
+  "confirm.title": "Подтверждения",
+  "confirm.loading": "Загрузка подтверждений…",
+  "confirm.refresh": "Обновить",
+  "confirm.empty": "Нечего подтверждать",
+  "confirm.emptyHint": "Здесь появляются обмены, лоты на Торговой площадке и изменения аккаунта, ожидающие подтверждения.",
+  "confirm.accept": "Подтвердить",
+  "confirm.decline": "Отклонить",
+  "confirm.acceptAll": "Подтвердить все ({count})",
+  "confirm.declineAll": "Отклонить все ({count})",
+  "confirm.clickAgain": "Нажмите ещё раз для подтверждения",
+  "confirm.acceptedDone": "Подтверждено.",
+  "confirm.declinedDone": "Отклонено.",
+  "confirm.typeTrade": "Предложение обмена",
+  "confirm.typeMarket": "Лот на Торговой площадке",
+  "confirm.typeOther": "Подтверждение",
+  "backend.noIdentitySecret": "Для этого аккаунта не сохранён identity secret. Добавьте его в «Изменить» или импортируйте maFile аккаунта.",
+  "backend.confNeedsSharedSecret": "Для входа при подтверждениях нужен shared secret аккаунта.",
+  "backend.confEmailGuard": "Этот аккаунт использует Steam Guard по почте. Для подтверждений нужен мобильный аутентификатор.",
+  "backend.confCodeRejected": "Steam не принял код Steam Guard. Проверьте shared secret и часы компьютера.",
+  "backend.confListFailed": "Steam не вернул подтверждения. Проверьте, что identity secret указан верно.",
+  "backend.confLoadFailed": "Не удалось загрузить подтверждения: {detail}",
+  "backend.confRespondFailed": "Steam не смог выполнить действие: {detail}",
 };
 
 export default ru;

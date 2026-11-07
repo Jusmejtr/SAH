@@ -21,6 +21,7 @@
 - **One-click login.** Click an account and the app restarts Steam, signs in and enters the Steam Guard code for you.
 - **Steam Guard codes.** See the current code with a countdown and copy it with one click, the same as the Steam mobile app.
 - **Steam Guard setup.** Add a Steam Guard Mobile Authenticator to an account straight from the app. The app shows the revocation code and lets you save a `.maFile` backup.
+- **Mobile confirmations.** Confirm or decline trade offers, market listings and account changes without the phone. Works for accounts set up in the app and for imported `.maFile`s (they include the identity secret).
 - **Import and export:**
   - text lists with your choice of delimiter and column order
   - `.maFile` files from Steam Desktop Authenticator

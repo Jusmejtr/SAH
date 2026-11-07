@@ -275,6 +275,32 @@ const pt: Messages = {
   "backend.wrongActivationCode":
     "Esse código de ativação está incorreto. Confira e tente novamente.",
   "backend.activationFailed": "O Steam não aceitou a ativação: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "Necessário para as confirmações. Deixe vazio para manter o atual.",
+  "card.confirmations": "Confirmações…",
+  "confirm.title": "Confirmações",
+  "confirm.loading": "Carregando confirmações…",
+  "confirm.refresh": "Atualizar",
+  "confirm.empty": "Nada para confirmar",
+  "confirm.emptyHint": "Ofertas de troca, anúncios do mercado e alterações da conta aguardando confirmação aparecem aqui.",
+  "confirm.accept": "Confirmar",
+  "confirm.decline": "Recusar",
+  "confirm.acceptAll": "Confirmar tudo ({count})",
+  "confirm.declineAll": "Recusar tudo ({count})",
+  "confirm.clickAgain": "Clique de novo para confirmar",
+  "confirm.acceptedDone": "Confirmado.",
+  "confirm.declinedDone": "Recusado.",
+  "confirm.typeTrade": "Oferta de troca",
+  "confirm.typeMarket": "Anúncio do mercado",
+  "confirm.typeOther": "Confirmação",
+  "backend.noIdentitySecret": "Esta conta não tem identity secret salvo. Adicione em Editar ou importe o maFile da conta.",
+  "backend.confNeedsSharedSecret": "As confirmações precisam do shared secret da conta para entrar.",
+  "backend.confEmailGuard": "Esta conta usa o Steam Guard por e-mail. As confirmações precisam de um autenticador móvel.",
+  "backend.confCodeRejected": "O Steam não aceitou o código do Steam Guard. Verifique o shared secret e o relógio do computador.",
+  "backend.confListFailed": "O Steam não retornou as confirmações. Verifique se o identity secret está correto.",
+  "backend.confLoadFailed": "Não foi possível carregar as confirmações: {detail}",
+  "backend.confRespondFailed": "O Steam não conseguiu concluir a ação: {detail}",
 };
 
 export default pt;

@@ -293,6 +293,32 @@ const en = {
   "backend.wrongActivationCode":
     "That activation code is wrong. Check it and try again.",
   "backend.activationFailed": "Steam did not accept the activation: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "Needed for confirmations. Leave empty to keep the current one.",
+  "card.confirmations": "Confirmations…",
+  "confirm.title": "Confirmations",
+  "confirm.loading": "Loading confirmations…",
+  "confirm.refresh": "Refresh",
+  "confirm.empty": "Nothing to confirm",
+  "confirm.emptyHint": "Trade offers, market listings and account changes waiting for confirmation show up here.",
+  "confirm.accept": "Confirm",
+  "confirm.decline": "Decline",
+  "confirm.acceptAll": "Confirm all ({count})",
+  "confirm.declineAll": "Decline all ({count})",
+  "confirm.clickAgain": "Click again to confirm",
+  "confirm.acceptedDone": "Confirmed.",
+  "confirm.declinedDone": "Declined.",
+  "confirm.typeTrade": "Trade offer",
+  "confirm.typeMarket": "Market listing",
+  "confirm.typeOther": "Confirmation",
+  "backend.noIdentitySecret": "This account has no identity secret stored. Add it in Edit, or import the account's maFile.",
+  "backend.confNeedsSharedSecret": "Confirmations need the account's shared secret to sign in.",
+  "backend.confEmailGuard": "This account uses email Steam Guard. Confirmations need a mobile authenticator.",
+  "backend.confCodeRejected": "Steam did not accept the Steam Guard code. Check the shared secret and the computer's clock.",
+  "backend.confListFailed": "Steam did not return the confirmations. Check that the identity secret is correct.",
+  "backend.confLoadFailed": "Could not load confirmations: {detail}",
+  "backend.confRespondFailed": "Steam could not complete the action: {detail}",
 } as const;
 
 export default en;

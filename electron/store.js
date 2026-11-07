@@ -90,7 +90,23 @@ const toPublic = (account) => ({
   displayName: account.displayName ?? "",
   hasSharedSecret: Boolean(account.sharedSecret),
   hasAuthenticator: Boolean(account.authenticator),
+  // Accounts set up in this app always have identity_secret in their
+  // authenticator data, even if they were created before identitySecret was
+  // stored on its own.
+  hasIdentitySecret: Boolean(account.identitySecret || account.authenticator),
 });
+
+const identitySecretOf = (account) => {
+  if (account.identitySecret) return decrypt(account.identitySecret);
+  if (account.authenticator) {
+    try {
+      return String(JSON.parse(decrypt(account.authenticator)).identity_secret ?? "");
+    } catch {
+      return "";
+    }
+  }
+  return "";
+};
 
 const findAccount = (accounts, id) => {
   const account = accounts.find((item) => item.id === id);
@@ -113,6 +129,7 @@ export const completeAuthenticator = (id, data) => {
   const target = findAccount(accounts, id);
   target.sharedSecret = encrypt(data.shared_secret);
   target.authenticator = encrypt(JSON.stringify(data));
+  if (data.identity_secret) target.identitySecret = encrypt(data.identity_secret);
   delete target.pendingAuthenticator;
   writeRaw(accounts);
   return toPublic(target);
@@ -134,10 +151,12 @@ export const addAccount = ({
   username,
   password,
   sharedSecret,
+  identitySecret,
   displayName,
 }) => {
   assertEncryptionAvailable();
 
+  const trimmedIdentitySecret = String(identitySecret ?? "").trim();
   const trimmedUsername = String(username ?? "").trim();
   const trimmedSharedSecret = String(sharedSecret ?? "").trim();
   if (!trimmedUsername) throw new Error("Username is required.");
@@ -158,6 +177,9 @@ export const addAccount = ({
     displayName: String(displayName ?? "").trim(),
     password: encrypt(password),
     sharedSecret: trimmedSharedSecret ? encrypt(trimmedSharedSecret) : "",
+    ...(trimmedIdentitySecret
+      ? { identitySecret: encrypt(trimmedIdentitySecret) }
+      : {}),
   };
 
   accounts.push(account);
@@ -167,7 +189,7 @@ export const addAccount = ({
 
 export const updateAccount = (
   id,
-  { username, password, sharedSecret, displayName },
+  { username, password, sharedSecret, identitySecret, displayName },
 ) => {
   assertEncryptionAvailable();
 
@@ -198,6 +220,11 @@ export const updateAccount = (
   const trimmedSharedSecret = String(sharedSecret ?? "").trim();
   if (trimmedSharedSecret) {
     target.sharedSecret = encrypt(trimmedSharedSecret);
+  }
+
+  const trimmedIdentitySecret = String(identitySecret ?? "").trim();
+  if (trimmedIdentitySecret) {
+    target.identitySecret = encrypt(trimmedIdentitySecret);
   }
 
   writeRaw(accounts);
@@ -260,6 +287,7 @@ export const getSecrets = (id) => {
     displayName: account.displayName ?? "",
     password: decrypt(account.password),
     sharedSecret: account.sharedSecret ? decrypt(account.sharedSecret) : "",
+    identitySecret: identitySecretOf(account),
   };
 };
 

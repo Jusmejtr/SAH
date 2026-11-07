@@ -27,6 +27,7 @@ const emptyForm: AccountUpdate = {
   username: "",
   password: "",
   sharedSecret: "",
+  identitySecret: "",
   displayName: "",
 };
 
@@ -51,6 +52,7 @@ export default function EditDialog({
       username: account.username,
       password: "",
       sharedSecret: "",
+      identitySecret: "",
       displayName: account.displayName,
     });
 
@@ -61,6 +63,7 @@ export default function EditDialog({
           username: secrets.username,
           password: secrets.password,
           sharedSecret: secrets.sharedSecret,
+          identitySecret: secrets.identitySecret,
           displayName: secrets.displayName,
         });
       })
@@ -149,6 +152,15 @@ export default function EditDialog({
               fullWidth
               disabled={loading}
               helperText={t("edit.sharedSecretHelp")}
+            />
+            <TextField
+              label={t("common.identitySecret")}
+              type="password"
+              value={form.identitySecret ?? ""}
+              onChange={handleChange("identitySecret")}
+              fullWidth
+              disabled={loading}
+              helperText={t("edit.identitySecretHelp")}
             />
             <TextField
               label={t("common.displayName")}

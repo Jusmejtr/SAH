@@ -274,6 +274,32 @@ const de: Messages = {
   "backend.wrongActivationCode":
     "Der Aktivierungscode ist falsch. Prüfe ihn und versuche es erneut.",
   "backend.activationFailed": "Steam hat die Aktivierung nicht akzeptiert: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity Secret",
+  "edit.identitySecretHelp": "Wird für Bestätigungen benötigt. Leer lassen, um das aktuelle zu behalten.",
+  "card.confirmations": "Bestätigungen…",
+  "confirm.title": "Bestätigungen",
+  "confirm.loading": "Bestätigungen werden geladen…",
+  "confirm.refresh": "Aktualisieren",
+  "confirm.empty": "Nichts zu bestätigen",
+  "confirm.emptyHint": "Tauschangebote, Marktangebote und Kontoänderungen, die auf Bestätigung warten, erscheinen hier.",
+  "confirm.accept": "Bestätigen",
+  "confirm.decline": "Ablehnen",
+  "confirm.acceptAll": "Alle bestätigen ({count})",
+  "confirm.declineAll": "Alle ablehnen ({count})",
+  "confirm.clickAgain": "Zum Bestätigen erneut klicken",
+  "confirm.acceptedDone": "Bestätigt.",
+  "confirm.declinedDone": "Abgelehnt.",
+  "confirm.typeTrade": "Tauschangebot",
+  "confirm.typeMarket": "Marktangebot",
+  "confirm.typeOther": "Bestätigung",
+  "backend.noIdentitySecret": "Für dieses Konto ist kein Identity Secret gespeichert. Füge es unter Bearbeiten hinzu oder importiere die maFile des Kontos.",
+  "backend.confNeedsSharedSecret": "Für Bestätigungen wird das Shared Secret des Kontos zur Anmeldung benötigt.",
+  "backend.confEmailGuard": "Dieses Konto nutzt Steam Guard per E-Mail. Für Bestätigungen ist ein mobiler Authentifikator nötig.",
+  "backend.confCodeRejected": "Steam hat den Steam-Guard-Code nicht akzeptiert. Prüfe das Shared Secret und die Uhrzeit des Computers.",
+  "backend.confListFailed": "Steam hat keine Bestätigungen geliefert. Prüfe, ob das Identity Secret stimmt.",
+  "backend.confLoadFailed": "Bestätigungen konnten nicht geladen werden: {detail}",
+  "backend.confRespondFailed": "Steam konnte die Aktion nicht ausführen: {detail}",
 };
 
 export default de;

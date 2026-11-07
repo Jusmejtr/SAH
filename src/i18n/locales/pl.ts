@@ -294,6 +294,32 @@ const pl: Messages = {
   "backend.wrongActivationCode":
     "Ten kod aktywacyjny jest nieprawidłowy. Sprawdź go i spróbuj ponownie.",
   "backend.activationFailed": "Steam nie zaakceptował aktywacji: {detail}",
+  // confirmations
+  "common.identitySecret": "Identity secret",
+  "edit.identitySecretHelp": "Potrzebny do potwierdzeń. Zostaw puste, aby zachować obecny.",
+  "card.confirmations": "Potwierdzenia…",
+  "confirm.title": "Potwierdzenia",
+  "confirm.loading": "Wczytywanie potwierdzeń…",
+  "confirm.refresh": "Odśwież",
+  "confirm.empty": "Nic do potwierdzenia",
+  "confirm.emptyHint": "Tutaj pojawiają się oferty wymiany, oferty na rynku i zmiany konta czekające na potwierdzenie.",
+  "confirm.accept": "Potwierdź",
+  "confirm.decline": "Odrzuć",
+  "confirm.acceptAll": "Potwierdź wszystkie ({count})",
+  "confirm.declineAll": "Odrzuć wszystkie ({count})",
+  "confirm.clickAgain": "Kliknij ponownie, aby potwierdzić",
+  "confirm.acceptedDone": "Potwierdzono.",
+  "confirm.declinedDone": "Odrzucono.",
+  "confirm.typeTrade": "Oferta wymiany",
+  "confirm.typeMarket": "Oferta na rynku",
+  "confirm.typeOther": "Potwierdzenie",
+  "backend.noIdentitySecret": "To konto nie ma zapisanego identity secret. Dodaj go w Edycji lub zaimportuj plik maFile konta.",
+  "backend.confNeedsSharedSecret": "Potwierdzenia wymagają shared secret konta do zalogowania.",
+  "backend.confEmailGuard": "To konto używa Steam Guard przez e-mail. Potwierdzenia wymagają mobilnego uwierzytelniacza.",
+  "backend.confCodeRejected": "Steam nie zaakceptował kodu Steam Guard. Sprawdź shared secret i zegar komputera.",
+  "backend.confListFailed": "Steam nie zwrócił potwierdzeń. Sprawdź, czy identity secret jest poprawny.",
+  "backend.confLoadFailed": "Nie udało się wczytać potwierdzeń: {detail}",
+  "backend.confRespondFailed": "Steam nie mógł wykonać operacji: {detail}",
 };
 
 export default pl;

@@ -4,6 +4,21 @@ export type Account = {
   displayName: string;
   hasSharedSecret: boolean;
   hasAuthenticator: boolean;
+  hasIdentitySecret: boolean;
+};
+
+export type Confirmation = {
+  id: string;
+  key: string;
+  /** 1 generic, 2 trade, 3 market listing, others are account changes. */
+  type: number;
+  typeName: string;
+  headline: string;
+  sending: string;
+  receiving: string;
+  createdAt: number;
+  icon: string;
+  creator: string;
 };
 
 export type GuardSetupStep =
@@ -32,6 +47,7 @@ export type NewAccount = {
   username: string;
   password: string;
   sharedSecret: string;
+  identitySecret?: string;
   displayName: string;
 };
 
@@ -46,6 +62,7 @@ export type AccountSecrets = {
   displayName: string;
   password: string;
   sharedSecret: string;
+  identitySecret: string;
 };
 
 export type AppSettings = {
@@ -106,6 +123,12 @@ type SahApi = {
   submitGuardEmailCode: (code: string) => Promise<GuardSetupStep>;
   finalizeGuardSetup: (code: string) => Promise<GuardSetupStep>;
   cancelGuardSetup: () => Promise<boolean>;
+  listConfirmations: (id: string) => Promise<Confirmation[]>;
+  respondToConfirmations: (
+    id: string,
+    items: Pick<Confirmation, "id" | "key">[],
+    accept: boolean,
+  ) => Promise<boolean>;
   exportMaFile: (id: string) => Promise<SaveFileResult>;
   exportAccounts: (options: ExportOptions) => Promise<ExportResult>;
   loginAccount: (id: string) => Promise<LoginResult>;
@@ -150,6 +173,17 @@ export const submitGuardEmailCode = (code: string) =>
 export const finalizeGuardSetup = (code: string) =>
   getApi().finalizeGuardSetup(code);
 export const cancelGuardSetup = () => getApi().cancelGuardSetup();
+export const listConfirmations = (id: string) => getApi().listConfirmations(id);
+export const respondToConfirmations = (
+  id: string,
+  items: Pick<Confirmation, "id" | "key">[],
+  accept: boolean,
+) =>
+  getApi().respondToConfirmations(
+    id,
+    items.map(({ id: itemId, key }) => ({ id: itemId, key })),
+    accept,
+  );
 export const exportMaFile = (id: string) => getApi().exportMaFile(id);
 export const exportAccounts = (options: ExportOptions) =>
   getApi().exportAccounts(options);

@@ -21,6 +21,11 @@ import {
   startGuardSetup,
   submitGuardEmailCode,
 } from "./steam/authenticator.js";
+import {
+  forgetConfirmationSession,
+  listConfirmations,
+  respondToConfirmations,
+} from "./steam/confirmations.js";
 import { CancelledError } from "./errors.js";
 import { log, openLog } from "./log.js";
 import { setLanguage, tr } from "./i18n.js";
@@ -102,11 +107,21 @@ Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
   ipcMain.handle("accounts:list", () => listAccounts());
   ipcMain.handle("accounts:add", (_event, account) => addAccount(account));
-  ipcMain.handle("accounts:update", (_event, id, account) =>
-    updateAccount(id, account),
-  );
+  ipcMain.handle("accounts:update", (_event, id, account) => {
+    forgetConfirmationSession(id);
+    return updateAccount(id, account);
+  });
   ipcMain.handle("accounts:secrets", (_event, id) => getSecrets(id));
-  ipcMain.handle("accounts:remove", (_event, id) => removeAccount(id));
+  ipcMain.handle("accounts:remove", (_event, id) => {
+    forgetConfirmationSession(id);
+    return removeAccount(id);
+  });
+  ipcMain.handle("confirmations:list", (_event, id) =>
+    listConfirmations(id, getSecrets(id)),
+  );
+  ipcMain.handle("confirmations:respond", (_event, id, items, accept) =>
+    respondToConfirmations(id, getSecrets(id), items, accept),
+  );
   ipcMain.handle("accounts:guard-code", (_event, id) => {
     const { sharedSecret } = getSecrets(id);
     if (!sharedSecret) {

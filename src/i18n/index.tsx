@@ -52,7 +52,7 @@ export type LanguagePreference = Language | "auto";
 const LANGUAGE_KEY = "sah-language";
 const DEFAULT_LANGUAGE: Language = "en";
 
-const HTML_LANG: Record<Language, string> = {
+export const HTML_LANG: Record<Language, string> = {
   en: "en",
   es: "es",
   de: "de",
