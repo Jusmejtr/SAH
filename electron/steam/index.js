@@ -7,6 +7,7 @@ import { log } from "../log.js";
 import { CancelledError, throwIfCancelled } from "../errors.js";
 import { launchSteam, resolveSteam, shutdownSteam } from "./process.js";
 import { INSTALL, PROBE } from "./page-scripts.js";
+import { prepareAutoLogin } from "./autologin.js";
 
 const SIGN_IN_TIMEOUT_MS = 90000;
 const STEP_INTERVAL_MS = 1500;
@@ -209,11 +210,10 @@ export const loginToSteam = async (credentials, onProgress = () => {}) => {
     await shutdownSteam(steam, job);
     throwIfCancelled(job);
 
-    if (steam.dataDir) {
-      onProgress("Preparing Steam");
-      enableCefDebugging(steam.dataDir);
-      throwIfCancelled(job);
-    }
+    onProgress("Preparing Steam");
+    if (steam.dataDir) enableCefDebugging(steam.dataDir);
+    await prepareAutoLogin(steam, credentials.username);
+    throwIfCancelled(job);
 
     onProgress("Starting Steam");
     launchSteam(steam);
